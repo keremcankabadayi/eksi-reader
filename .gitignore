@@ -17,3 +17,7 @@ session.md
 
 # Kaynak manifesti dist reposunda yaşıyor, burada üretiliyor
 docs/source.json
+
+# SwiftPM build ciktisi
+SukelaCore/.build/
+.swiftpm/

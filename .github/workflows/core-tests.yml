@@ -1,0 +1,24 @@
+name: core-tests
+
+# SukelaCore platformdan bagimsiz: WebKit/UIKit ice girmiyor, o yuzden
+# Linux konteynerinde kosuyor. macOS runner'a gerek yok, 10x carpan yok.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "SukelaCore/**"
+      - ".github/workflows/core-tests.yml"
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    container: swift:6.0.3-noble
+    steps:
+      - uses: actions/checkout@v4
+      - name: swift test
+        run: swift test --package-path SukelaCore
