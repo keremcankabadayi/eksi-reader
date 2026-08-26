@@ -8,7 +8,7 @@ Reklamsız, kişisel Ekşi Sözlük okuyucusu. Yayınlanmayacak, App Store'a git
 - **Dağıtım SideStore.** Ücretsiz imza, telefonda otomatik yenileme.
 - **Derleme GitHub Actions `macos-15` runner'ında.** Geliştirme makinesinde Mac yok.
 - **İki repo var.** `eksi-reader` (bu repo, private) kodu ve CI'ı tutuyor;
-  `eksi-reader-dist` (public) yalnızca `docs/source.json`, `docs/icon.png` ve
+  `er-dist` (public) yalnızca `docs/source.json`, `docs/icon.png` ve
   Release'lerdeki IPA'ları tutuyor. **Dist reposu public kalmak zorunda** — SideStore
   ikisini de kimlik doğrulaması olmadan indiriyor. Hiçbirine token, şifre veya çerez
   koyma; dist'e yazma yetkisi `DIST_TOKEN` secret'ında.

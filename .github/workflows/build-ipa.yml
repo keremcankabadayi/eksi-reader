@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  DIST_REPO: keremcankabadayi/eksi-reader-dist
+  DIST_REPO: keremcankabadayi/er-dist
 
 jobs:
   build:
@@ -132,7 +132,7 @@ jobs:
           cp ../docs/source.json ../docs/icon.png docs/
           if [ ! -f README.md ]; then
             printf '%s\n' \
-              '# eksi-reader-dist' \
+              '# er-dist' \
               '' \
               "Sukela Lite'in dagitim deposu. Kaynak kod burada degil." \
               '' \

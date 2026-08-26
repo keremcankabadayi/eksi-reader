@@ -11,7 +11,7 @@ derleme → release → telefona kurulum hattının uçtan uca çalıştığın�
 Proje iki repoya bölünmüş:
 
 - **`eksi-reader`** (bu repo, private) — kaynak kod ve CI.
-- **`eksi-reader-dist`** (public) — yalnızca dağıtım çıktısı: `docs/source.json`,
+- **`er-dist`** (public) — yalnızca dağıtım çıktısı: `docs/source.json`,
   `docs/icon.png` ve Release'lerdeki imzasız IPA'lar.
 
 Bölünmenin tek sebebi şu: SideStore hem kaynak manifestini hem de IPA'yı **kimlik
@@ -20,8 +20,8 @@ doğrulaması olmadan** indirmek zorunda. Yani çıktının public olması şart
 ```
 eksi-reader main'e push
   → GitHub Actions (macos-15 runner) imzasız IPA üretir
-  → eksi-reader-dist'in Release'ine yükler
-  → eksi-reader-dist/docs/source.json'u günceller  ── SideStore kaynağı
+  → er-dist'in Release'ine yükler
+  → er-dist/docs/source.json'u günceller  ── SideStore kaynağı
   → telefonda SideStore "Update" gösterir
 ```
 
@@ -39,7 +39,7 @@ Sıra şu:
 2. Bu repoyu GitHub'a push'la, Actions'taki `build-ipa` işinin yeşile dönmesini bekle.
 3. Telefonda SideStore kaynağını ekle, uygulamayı kur.
 
-> **`eksi-reader-dist` public kalmalı.** SideStore release asset'ini ve `source.json`'u
+> **`er-dist` public kalmalı.** SideStore release asset'ini ve `source.json`'u
 > kimlik doğrulaması olmadan indiriyor; dist reposu private olursa kurulum da güncelleme
 > de kırılır. Bu repo (`eksi-reader`) private olabilir.
 >

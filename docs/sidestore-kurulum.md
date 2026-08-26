@@ -82,7 +82,7 @@ Kabloyu çıkarabilirsin. Bilgisayarla işin bitti.
 Proje iki repoya bölünmüş durumda:
 
 - **`eksi-reader`** (private) — kaynak kod ve CI. Derleme burada koşuyor.
-- **`eksi-reader-dist`** (public) — yalnızca `docs/source.json`, `docs/icon.png` ve
+- **`er-dist`** (public) — yalnızca `docs/source.json`, `docs/icon.png` ve
   Release'lerdeki imzasız IPA'lar. SideStore bunları kimlik doğrulaması olmadan
   indirmek zorunda, o yüzden bu repo public.
 
@@ -95,13 +95,13 @@ kontrol et.
 Sonra telefonda şu linke dokun (Safari'de aç, SideStore'a devret):
 
 ```
-sidestore://source?url=https://raw.githubusercontent.com/keremcankabadayi/eksi-reader-dist/main/docs/source.json
+sidestore://source?url=https://raw.githubusercontent.com/keremcankabadayi/er-dist/main/docs/source.json
 ```
 
 Alternatif olarak SideStore > **Sources** > **+** deyip şu URL'yi elle yapıştır:
 
 ```
-https://raw.githubusercontent.com/keremcankabadayi/eksi-reader-dist/main/docs/source.json
+https://raw.githubusercontent.com/keremcankabadayi/er-dist/main/docs/source.json
 ```
 
 Kaynak listeye düşünce **Şükela Lite**'ı seçip **FREE / GET** ile kur. İmzayı SideStore
@@ -136,7 +136,7 @@ yanında **Update** beliriyor. Kablo yok, Mac yok, dosya taşımak yok.
 - **Kaynak eklenmiyor / boş görünüyor:** Actions işi henüz koşmamış olabilir.
   `docs/source.json` içindeki `apps[0].versions` dizisi boşsa SideStore gösterecek bir
   şey bulamıyor.
-- **İndirme başarısız:** `eksi-reader-dist` public mi? SideStore release asset'ini kimlik
+- **İndirme başarısız:** `er-dist` public mi? SideStore release asset'ini kimlik
   doğrulaması olmadan indiriyor, private repoda bu çalışmaz. Kod reposunun private
   olması sorun değil, dist reposunun private olması her şeyi kırar.
 - **Kurulum "unable to install" diyor:** LocalDevVPN bağlı mı, ağ açık mı, 3 uygulama
