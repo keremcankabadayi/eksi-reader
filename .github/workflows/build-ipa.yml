@@ -69,19 +69,51 @@ jobs:
 
       # source.json'un surum gecmisi dist reposunda yasiyor; bu repo onu
       # tutmuyor. Once klonlayip mevcut gecmisi aliyoruz.
-      - name: Dist reposunu klonla
+      #
+      # Bos repoya release atilamiyor ("Repository is empty", HTTP 422), o yuzden
+      # dist bosken burada bir ilk commit atip push ediyoruz. Release adimi bunu
+      # bekliyor.
+      - name: Dist reposunu hazirla
         env:
           DIST_TOKEN: ${{ secrets.DIST_TOKEN }}
         run: |
           rm -rf distrepo
           git clone --depth 1 \
             "https://x-access-token:${DIST_TOKEN}@github.com/${DIST_REPO}.git" distrepo
+
+          cd distrepo
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          if ! git rev-parse --verify HEAD >/dev/null 2>&1; then
+            git symbolic-ref HEAD refs/heads/main
+            printf '%s\n' \
+              '# er-dist' \
+              '' \
+              "Sukela Lite'in dagitim deposu. Kaynak kod burada degil." \
+              '' \
+              'Bu repo yalnizca SideStore icin gereken dosyalari tutuyor:' \
+              '`docs/source.json`, `docs/icon.png` ve Releaselerdeki imzasiz IPA.' \
+              'Hepsini GitHub Actions yaziyor, elle duzenleme.' \
+              '' \
+              'SideStore kaynagi:' \
+              '' \
+              '```' \
+              "https://raw.githubusercontent.com/${DIST_REPO}/main/docs/source.json" \
+              '```' > README.md
+            git add README.md
+            git commit -m "chore: dagitim deposunu baslat"
+            git push origin HEAD:main
+            echo "dist reposu ilklendirildi"
+          fi
+          cd ..
+
           if [ -f distrepo/docs/source.json ]; then
             cp distrepo/docs/source.json docs/source.json
             echo "mevcut kaynak alindi"
           else
             rm -f docs/source.json
-            echo "dist reposu bos, kaynak sifirdan uretilecek"
+            echo "kaynak sifirdan uretilecek"
           fi
 
       - name: Release'i dist reposuna at
@@ -121,32 +153,10 @@ jobs:
       - name: Kaynagi dist reposuna yaz
         working-directory: distrepo
         run: |
-          git config user.name  "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          # Bos repo klonlandiysa HEAD dogmamis olur; checkout -b burada
-          # patlayabiliyor, symbolic-ref her iki durumda da guvenli.
-          if ! git rev-parse --verify HEAD >/dev/null 2>&1; then
-            git symbolic-ref HEAD refs/heads/main
-          fi
+          # Dal ve README'yi "Dist reposunu hazirla" adimi zaten kurdu.
           mkdir -p docs
           cp ../docs/source.json ../docs/icon.png docs/
-          if [ ! -f README.md ]; then
-            printf '%s\n' \
-              '# er-dist' \
-              '' \
-              "Sukela Lite'in dagitim deposu. Kaynak kod burada degil." \
-              '' \
-              'Bu repo yalnizca SideStore icin gereken dosyalari tutuyor:' \
-              '`docs/source.json`, `docs/icon.png` ve Releaselerdeki imzasiz IPA.' \
-              'Hepsini GitHub Actions yaziyor, elle duzenleme.' \
-              '' \
-              'SideStore kaynagi:' \
-              '' \
-              '```' \
-              "https://raw.githubusercontent.com/${DIST_REPO}/main/docs/source.json" \
-              '```' > README.md
-          fi
-          git add docs README.md
+          git add docs
           if git diff --cached --quiet; then
             echo "degisiklik yok"
             exit 0
