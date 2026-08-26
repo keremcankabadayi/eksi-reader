@@ -1,0 +1,156 @@
+{
+  "version": 3,
+  "lines": [
+    [
+      {
+        "id": "1",
+        "type": "model",
+        "color": "cyan"
+      },
+      {
+        "id": "2",
+        "type": "separator"
+      },
+      {
+        "id": "7ba8e91a-28c5-4f9d-801f-a8cfc9289d8d",
+        "type": "context-percentage-usable"
+      },
+      {
+        "id": "4",
+        "type": "separator"
+      },
+      {
+        "id": "5",
+        "type": "git-branch",
+        "color": "magenta"
+      },
+      {
+        "id": "6",
+        "type": "separator"
+      },
+      {
+        "id": "7",
+        "type": "git-changes",
+        "color": "yellow"
+      }
+    ],
+    [
+      {
+        "id": "27d4a330-acb5-47f9-9ad1-eb812a192bc9",
+        "type": "separator"
+      },
+      {
+        "id": "5b3a89cd-7509-4458-8ea4-86e36e3ecace",
+        "type": "tokens-cached"
+      },
+      {
+        "id": "e5d7f8f4-d124-4193-bcb0-ef36a0af7cf7",
+        "type": "separator"
+      },
+      {
+        "id": "93b30dc4-4750-4c99-b204-c550bca3e6d7",
+        "type": "tokens-input"
+      },
+      {
+        "id": "12208bb3-b3f2-4cc1-bdf8-1ddf58106d29",
+        "type": "separator"
+      },
+      {
+        "id": "bb93aa88-5f6c-4737-8781-bfaa95179210",
+        "type": "tokens-output"
+      },
+      {
+        "id": "51414401-404b-4a8a-b241-550bd4d2ca9a",
+        "type": "separator"
+      },
+      {
+        "id": "b92abf27-d371-4b8e-a88f-e42912c37f3b",
+        "type": "tokens-total"
+      }
+    ],
+    [
+      {
+        "id": "30cd3245-d311-4cf4-85c7-c5b493c32d79",
+        "type": "session-clock"
+      },
+      {
+        "id": "04f0fa95-5ebb-46c5-8dc8-e257204ae5a9",
+        "type": "separator"
+      },
+      {
+        "id": "3df6b1da-5f6b-44cd-8c6f-ef95a521e4dc",
+        "type": "session-usage"
+      },
+      {
+        "id": "15b479af-af5b-46fb-97fe-b624ffdbbb5c",
+        "type": "separator"
+      },
+      {
+        "id": "18311954-cf0e-4f68-b2af-1348f0c27527",
+        "type": "session-cost"
+      },
+      {
+        "id": "cb79ee26-acf5-47dc-a4ec-44e39f0d89e4",
+        "type": "separator"
+      },
+      {
+        "id": "071ed228-4c2b-444b-bcd9-c2846df7ad91",
+        "type": "reset-timer"
+      },
+      {
+        "id": "38c6935f-b96c-4a7d-98fa-82e9ccfc4c15",
+        "type": "separator"
+      },
+      {
+        "id": "6467af80-1cb1-44f5-aac4-360ccde2a503",
+        "type": "weekly-usage"
+      },
+      {
+        "id": "97e5bf26-c067-447e-aa8d-e874dfeaf444",
+        "type": "separator"
+      },
+      {
+        "id": "e6619c26-8fbb-4c52-acb1-9c6f7232fb54",
+        "type": "weekly-reset-timer"
+      },
+      {
+        "id": "b1f2c3d4000042a59c8d0a1b2c3d4e5f",
+        "type": "separator"
+      },
+      {
+        "id": "a9e8d7c611114b2a8f3e0011223344ff",
+        "type": "custom-command",
+        "commandPath": "node -e 'let d=``;process.stdin.on(`data`,c=>d+=c).on(`end`,()=>{try{const w=JSON.parse(d).rate_limits?.seven_day;if(!w||w.resets_at==null)return process.stdout.write(``);const used=w.utilization??w.used_percentage??0,win=604800,now=Date.now()/1e3,el=win-(w.resets_at-now),est=el>0?used*win/el:used;process.stdout.write(`Est: `+Math.round(est)+`%`);}catch(e){process.stdout.write(``);}})'",
+        "timeout": 3000
+      }
+    ],
+    [
+      {
+        "id": "cs-usage-widget-01",
+        "type": "custom-command",
+        "commandPath": "/home/vscode/.config/ccstatusline/codespace-usage.sh",
+        "timeout": 2000,
+        "color": "green"
+      }
+    ]
+  ],
+  "flexMode": "full-minus-40",
+  "compactThreshold": 60,
+  "colorLevel": 2,
+  "inheritSeparatorColors": false,
+  "globalBold": false,
+  "minimalistMode": false,
+  "powerline": {
+    "enabled": false,
+    "separators": [
+      ""
+    ],
+    "separatorInvertBackground": [
+      false
+    ],
+    "startCaps": [],
+    "endCaps": [],
+    "autoAlign": false,
+    "continueThemeAcrossLines": false
+  }
+}

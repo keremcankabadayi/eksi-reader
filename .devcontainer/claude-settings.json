@@ -1,0 +1,16 @@
+{
+  "theme": "dark",
+  "model": "opus",
+  "statusLine": {
+    "type": "command",
+    "command": "npx -y ccstatusline@latest",
+    "padding": 0
+  },
+  "permissions": {
+    "allow": [
+      "Bash",
+      "Read",
+      "Write"
+    ]
+  }
+}

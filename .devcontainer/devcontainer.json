@@ -1,0 +1,29 @@
+{
+  "name": "eksi-reader-claude-code",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": { "version": "22" },
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "forwardPorts": [3000, 3001],
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "containerEnv": {
+    "CAVEMAN_DEFAULT_MODE": "full"
+  },
+  "mounts": [
+    "source=eksi-reader-claude-config,target=/home/vscode/.claude,type=volume"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": ["anthropic.claude-code", "github.vscode-github-actions"]
+    }
+  },
+  "secrets": {
+    "CLAUDE_CODE_OAUTH_TOKEN": {
+      "description": "Claude Code OAuth token (from `claude setup-token`). Injected as env var so the CLI skips the interactive login prompt. Note: Remote Control does not accept this token type."
+    },
+    "GH_TOKEN": {
+      "description": "GitHub CLASSIC PAT with `repo`, `workflow`, `read:org`, `user` scopes. gh CLI and git (via the credential helper set in post-create.sh) pick it up automatically - no `gh auth login` needed after rebuilds. Grants cross-repo access for opening PRs on other repos. The `user` scope also powers the Codespace core-hours widget in the statusline (billing usage API; fine-grained tokens are NOT supported there)."
+    }
+  }
+}
