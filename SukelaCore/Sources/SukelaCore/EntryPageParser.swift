@@ -31,10 +31,23 @@ public enum EntryPageParser {
         )
     }
 
+    /// Dardan genişe; ilk sonuç veren desende duruyoruz.
+    private static let entryListSelectors = [
+        "ul[id^=entry-item-list] > li",
+        "ul.entry-list > li",
+        "li[data-author][data-favorite-count]",
+    ]
+
     private static func parseEntries(in document: Document) throws -> [Entry] {
+        var items: [Element] = []
+        for selector in entryListSelectors {
+            items = try document.select(selector).array()
+            if !items.isEmpty { break }
+        }
+
         var entries: [Entry] = []
 
-        for item in try document.select("ul[id^=entry-item-list] > li").array() {
+        for item in items {
             let favoriteCount = Int(try item.attr("data-favorite-count")) ?? 0
             let authorNick = try item.attr("data-author")
             let authorId = try item.attr("data-author-id")

@@ -64,3 +64,45 @@ final class EntryPageParserTests: XCTestCase {
         XCTAssertTrue(page.entries.isEmpty)
     }
 }
+
+// MARK: - İşaretleme değişirse
+
+extension EntryPageParserTests {
+    /// entry-item-list id'si değişirse sınıf üzerinden bulmalı.
+    func testFallsBackToEntryListClass() throws {
+        let html = """
+        <html><body>
+        <h1 id="title" data-title="x" data-slug="x" data-id="1"></h1>
+        <ul class="entry-list">
+          <li data-id="5" data-author="biri" data-author-id="9" data-favorite-count="3">
+            <div class="content">gövde</div>
+            <a class="entry-date permalink" href="/entry/5">01.01.2026 10:00</a>
+          </li>
+        </ul>
+        </body></html>
+        """
+        let page = try EntryPageParser.parse(html: html)
+        XCTAssertEqual(page.entries.count, 1)
+        XCTAssertEqual(page.entries.first?.author.nick, "biri")
+        XCTAssertEqual(page.entries.first?.favoriteCount, 3)
+    }
+
+    /// Liste sarmalayıcısı tamamen değişirse entry'nin kendi öznitelikleriyle bulmalı.
+    func testFallsBackToEntryAttributes() throws {
+        let html = """
+        <html><body>
+        <h1 id="title" data-title="x" data-slug="x" data-id="1"></h1>
+        <div class="entries">
+          <li data-id="7" data-author="baska" data-author-id="4" data-favorite-count="0">
+            <div class="content">ikinci gövde</div>
+            <a class="entry-date permalink" href="/entry/7">02.01.2026 11:00</a>
+          </li>
+        </div>
+        </body></html>
+        """
+        let page = try EntryPageParser.parse(html: html)
+        XCTAssertEqual(page.entries.count, 1)
+        XCTAssertEqual(page.entries.first?.id, "7")
+        XCTAssertEqual(page.entries.first?.plainText, "ikinci gövde")
+    }
+}

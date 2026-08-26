@@ -7,5 +7,23 @@
     <li><a href="/26-agustos-2026--555111">26 ağustos 2026<small>1,2k</small></a></li>
     <li><a href="/entry-sayisi-olmayan-baslik--777">entry sayısı olmayan başlık</a></li>
   </ul>
+
+  <!-- Ekşi tam sayfada entry listesini de gönderiyor ve onun sınıfı da
+       "topic-list" ile başlıyor. Gevşek seçici bunları başlık sanıyordu. -->
+  <ul id="entry-item-list" class="topic-list entry-list">
+    <li data-id="98765" data-author="kerem" data-author-id="42" data-favorite-count="24">
+      <div class="content">bu bir entry, başlık değil.</div>
+      <footer>
+        <a class="entry-author" href="/biri/kerem">kerem</a>
+        <a class="entry-date permalink" href="/entry/98765">26.08.2026 18:40</a>
+      </footer>
+    </li>
+  </ul>
+
+  <!-- Gezinme bağlantıları da li a; bunlar "--id" deseni taşımıyor. -->
+  <ul class="topic-list submenu">
+    <li><a href="/basliklar/kanal/spor">spor</a></li>
+    <li><a href="/basliklar/kanal/siyaset">siyaset</a></li>
+  </ul>
 </section>
 </body></html>

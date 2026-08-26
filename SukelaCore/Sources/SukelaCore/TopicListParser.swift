@@ -3,25 +3,33 @@ import SwiftSoup
 
 /// Gündem / debe gibi başlık listesi sayfalarını ayrıştırıyor.
 ///
-/// Seçiciler emreisik95/eksilik-os (MIT) projesinden alındı; Ekşi zaman zaman
-/// işaretlemeyi değiştirdiği için birden fazla desen sırayla deneniyor.
+/// Seçiciler emreisik95/eksilik-os (MIT) projesinden alındı.
 public enum TopicListParser {
-    private static let selectors = [
-        "ul[class*=topic-list] li a",
-        "section#content-body ul li a",
+    /// Dardan genişe. Ekşi işaretlemeyi zaman zaman değiştiriyor, ilk tutan
+    /// desende duruyoruz. En gevşek desen entry listesini de yakalayabildiği
+    /// için `isTopicList` ve `topicId` süzgeçleri şart.
+    private static let listSelectors = [
+        "ul.topic-list.partial.mobile",
+        "ul.topic-list.partial",
+        "ul[class*=topic-list]",
+        "section#content-body ul",
     ]
 
     public static func parse(html: String) throws -> [Topic] {
         let document = try SwiftSoup.parse(html)
 
-        for selector in selectors {
-            let elements = try document.select(selector)
-            guard !elements.isEmpty() else { continue }
+        for selector in listSelectors {
+            let lists = try document.select(selector).array().filter(isTopicList)
+            guard !lists.isEmpty else { continue }
 
             var topics: [Topic] = []
-            for element in elements.array() {
-                guard let topic = try makeTopic(from: element) else { continue }
-                topics.append(topic)
+            var seen = Set<String>()
+            for list in lists {
+                for anchor in try list.select("li a").array() {
+                    guard let topic = try makeTopic(from: anchor) else { continue }
+                    guard seen.insert(topic.id).inserted else { continue }
+                    topics.append(topic)
+                }
             }
             if !topics.isEmpty { return topics }
         }
@@ -29,9 +37,22 @@ public enum TopicListParser {
         return []
     }
 
+    /// Entry listesinin sınıfı da "topic-list" ile başlıyor
+    /// (`<ul id="entry-item-list" class="topic-list entry-list">`), bu yüzden
+    /// sınıf adına bakmak yetmiyor.
+    private static func isTopicList(_ list: Element) -> Bool {
+        let id = (try? list.attr("id")) ?? ""
+        if id.hasPrefix("entry-item-list") { return false }
+
+        let classNames = (try? list.attr("class")) ?? ""
+        if classNames.contains("entry-list") { return false }
+
+        return true
+    }
+
     private static func makeTopic(from element: Element) throws -> Topic? {
         let href = try element.attr("href")
-        guard !href.isEmpty else { return nil }
+        guard let topicId = topicId(from: href) else { return nil }
 
         // Entry sayısı başlığın içindeki <small> ya da .detail elemanında.
         let countElement = try element.select("small").first()
@@ -45,12 +66,21 @@ public enum TopicListParser {
         }
         guard !title.isEmpty else { return nil }
 
-        // "/bir-baslik--123456" biçiminde; id "--" sonrası, slug öncesi.
-        let parts = href.components(separatedBy: "--")
-        let slug = parts.first?.replacingOccurrences(of: "/", with: "") ?? ""
-        let id = parts.count > 1 ? (parts.last ?? href) : href
+        let slug = href.components(separatedBy: "--").first?
+            .replacingOccurrences(of: "/", with: "") ?? ""
 
-        return Topic(id: id, title: title, slug: slug, entryCount: entryCount, link: href)
+        return Topic(id: topicId, title: title, slug: slug, entryCount: entryCount, link: href)
+    }
+
+    /// Başlık bağlantısı "/bir-baslik--123456" biçiminde. Yazar profilleri
+    /// ("/biri/kerem"), entry kalıcı bağlantıları ("/entry/98765") ve kanal
+    /// bağlantıları ("/basliklar/kanal/spor") bu deseni taşımıyor.
+    private static func topicId(from href: String) -> String? {
+        guard let range = href.range(of: "--", options: .backwards) else { return nil }
+        let candidate = String(href[range.upperBound...])
+            .components(separatedBy: "?").first ?? ""
+        guard !candidate.isEmpty, candidate.allSatisfy(\.isNumber) else { return nil }
+        return candidate
     }
 }
 
