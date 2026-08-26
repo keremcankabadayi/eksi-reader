@@ -1,0 +1,29 @@
+name: screenshots
+
+# Telefona kurmadan arayuzu gormek icin: macOS runner'da simulatoru acip
+# ekran goruntusu aliyor, artifact olarak yukluyor.
+#
+# Elle tetikleniyor. Her push'ta kosarsa macOS dakikalarini 10x carpanla yer.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  screenshots:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: XcodeGen kur
+        run: brew install xcodegen
+
+      - name: Simulatorde calistir ve goruntu al
+        run: ./run-sim.sh
+
+      - name: Goruntuleri yukle
+        uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: screenshots/*.png

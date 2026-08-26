@@ -21,3 +21,6 @@ docs/source.json
 # SwiftPM build ciktisi
 SukelaCore/.build/
 .swiftpm/
+
+# Simulator ciktilari
+screenshots/
