@@ -8,11 +8,20 @@ derleme → release → telefona kurulum hattının uçtan uca çalıştığın�
 
 ## Nasıl çalışıyor
 
+Proje iki repoya bölünmüş:
+
+- **`eksi-reader`** (bu repo, private) — kaynak kod ve CI.
+- **`eksi-reader-dist`** (public) — yalnızca dağıtım çıktısı: `docs/source.json`,
+  `docs/icon.png` ve Release'lerdeki imzasız IPA'lar.
+
+Bölünmenin tek sebebi şu: SideStore hem kaynak manifestini hem de IPA'yı **kimlik
+doğrulaması olmadan** indirmek zorunda. Yani çıktının public olması şart, kodun değil.
+
 ```
-main'e push
+eksi-reader main'e push
   → GitHub Actions (macos-15 runner) imzasız IPA üretir
-  → GitHub Release'e yükler
-  → docs/source.json'u günceller  ── SideStore kaynağı
+  → eksi-reader-dist'in Release'ine yükler
+  → eksi-reader-dist/docs/source.json'u günceller  ── SideStore kaynağı
   → telefonda SideStore "Update" gösterir
 ```
 
@@ -30,10 +39,16 @@ Sıra şu:
 2. Bu repoyu GitHub'a push'la, Actions'taki `build-ipa` işinin yeşile dönmesini bekle.
 3. Telefonda SideStore kaynağını ekle, uygulamayı kur.
 
-> **Repo public olmalı.** İki sebeple: public repolarda Actions dakikaları ücretsiz
-> (private'ta macOS runner 10x çarpanla ücretsiz kotayı yiyor), ve SideStore release
-> asset'ini kimlik doğrulaması olmadan indirebilmeli. Bu yüzden repoya hiçbir token,
-> şifre veya çerez koyma.
+> **`eksi-reader-dist` public kalmalı.** SideStore release asset'ini ve `source.json`'u
+> kimlik doğrulaması olmadan indiriyor; dist reposu private olursa kurulum da güncelleme
+> de kırılır. Bu repo (`eksi-reader`) private olabilir.
+>
+> Private repoda Actions dakikaları ücretsiz kotadan düşüyor: macOS **10x** çarpanlı.
+> Bir build ~75 saniye sürüyor, yukarı yuvarlamayla 2 dakika, yani kotadan 20 dakika.
+> Ücretsiz plandaki 2000 dakika ≈ ayda 100 build.
+>
+> Her iki repoya da token, şifre veya çerez koyma. Dist reposuna CI yazıyor; oraya
+> yazma yetkisi `DIST_TOKEN` secret'ında duruyor, kodda değil.
 
 ## Repo yapısı
 
@@ -45,7 +60,7 @@ Sıra şu:
 | `build-ipa.sh` | İmzasız IPA üretir → `dist/SukelaLite.ipa`. Sadece macOS. |
 | `run-sim.sh` | Simülatörde çalıştırıp `sim-screenshot.png` alır. Sadece macOS. |
 | `tools/make-icon.mjs` | App ikonunu bağımlılıksız üretir (saf PNG yazıcı). |
-| `tools/update-source.mjs` | `docs/source.json` (SideStore kaynağı) üretir/günceller. |
+| `tools/update-source.mjs` | `docs/source.json` (SideStore kaynağı) üretir. `--repo` dist reposunu alır; manifestteki tüm URL'ler oraya işaret eder. Sürüm geçmişi dist reposunda yaşadığı için bu repo `docs/source.json`'u takip etmiyor. |
 | `.github/workflows/build-ipa.yml` | Derleme + release + kaynak güncelleme hattı. |
 | `VERSION` | Tek sürüm kaynağı. Build numarası CI'ın `run_number`'ı. |
 

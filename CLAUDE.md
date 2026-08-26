@@ -7,8 +7,14 @@ Reklamsız, kişisel Ekşi Sözlük okuyucusu. Yayınlanmayacak, App Store'a git
 - **Mevcut uygulamalar kırılmıyor.** İstemci sıfırdan yazılıyor.
 - **Dağıtım SideStore.** Ücretsiz imza, telefonda otomatik yenileme.
 - **Derleme GitHub Actions `macos-15` runner'ında.** Geliştirme makinesinde Mac yok.
-- **Repo public kalmalı.** Actions dakikaları ve SideStore'un IPA'yı indirebilmesi için.
-  Buraya asla token, şifre veya çerez koyma.
+- **İki repo var.** `eksi-reader` (bu repo, private) kodu ve CI'ı tutuyor;
+  `eksi-reader-dist` (public) yalnızca `docs/source.json`, `docs/icon.png` ve
+  Release'lerdeki IPA'ları tutuyor. **Dist reposu public kalmak zorunda** — SideStore
+  ikisini de kimlik doğrulaması olmadan indiriyor. Hiçbirine token, şifre veya çerez
+  koyma; dist'e yazma yetkisi `DIST_TOKEN` secret'ında.
+- **`docs/source.json` bu repoda takip edilmiyor.** Sürüm geçmişi dist reposunda
+  yaşıyor; CI her koşuda dist'i klonlayıp geçmişi oradan alıyor, üstüne yeni sürümü
+  ekleyip geri yazıyor. Bu repoda tuttuğumuz kopya bayatlar, o yüzden `.gitignore`'da.
 - **Bundle ID sabit: `com.kerem.sukelalite`.** Apple haftada 10 yeni App ID'ye izin
   veriyor; aynı bundle ID'yi yeniden kurmak kotadan yemiyor. Değiştirme.
 - **Deployment target iOS 16.0.** `NavigationStack` bunu gerektiriyor. Düşürmek

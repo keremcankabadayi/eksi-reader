@@ -1,27 +1,39 @@
 name: build-ipa
 
+# Bu repo private. Derleme burada kosar, cikti (IPA + SideStore kaynagi)
+# ayri bir PUBLIC repoya yazilir: SideStore release asset'ini ve source.json'u
+# kimlik dogrulamasi olmadan indirmek zorunda.
+
 on:
   push:
     branches: [main]
     paths-ignore:
-      - "docs/**"
       - "**/*.md"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: build-ipa
   cancel-in-progress: false
+
+env:
+  DIST_REPO: keremcankabadayi/eksi-reader-dist
 
 jobs:
   build:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.ref_name }}
+
+      - name: DIST_TOKEN var mi
+        run: |
+          if [ -z "${{ secrets.DIST_TOKEN }}" ]; then
+            echo "hata: DIST_TOKEN secret'i tanimli degil." >&2
+            echo "      Settings > Secrets and variables > Actions altina ekle." >&2
+            exit 1
+          fi
 
       - name: Ortam bilgisi
         run: |
@@ -55,23 +67,40 @@ jobs:
           name: SukelaLite-${{ steps.meta.outputs.tag }}
           path: dist/SukelaLite.ipa
 
-      - name: Release olustur
+      # source.json'un surum gecmisi dist reposunda yasiyor; bu repo onu
+      # tutmuyor. Once klonlayip mevcut gecmisi aliyoruz.
+      - name: Dist reposunu klonla
         env:
-          GH_TOKEN: ${{ github.token }}
+          DIST_TOKEN: ${{ secrets.DIST_TOKEN }}
+        run: |
+          rm -rf distrepo
+          git clone --depth 1 \
+            "https://x-access-token:${DIST_TOKEN}@github.com/${DIST_REPO}.git" distrepo
+          if [ -f distrepo/docs/source.json ]; then
+            cp distrepo/docs/source.json docs/source.json
+            echo "mevcut kaynak alindi"
+          else
+            rm -f docs/source.json
+            echo "dist reposu bos, kaynak sifirdan uretilecek"
+          fi
+
+      - name: Release'i dist reposuna at
+        env:
+          GH_TOKEN: ${{ secrets.DIST_TOKEN }}
           TAG: ${{ steps.meta.outputs.tag }}
           TITLE: "Sukela Lite ${{ steps.meta.outputs.version }} (${{ steps.meta.outputs.build }})"
           SHA: ${{ github.sha }}
         run: |
-          # Ayni kosu tekrar calistirilirsa run_number degismiyor, tag zaten var olur.
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" dist/SukelaLite.ipa --clobber
+          if gh release view "$TAG" --repo "$DIST_REPO" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/SukelaLite.ipa --repo "$DIST_REPO" --clobber
           else
             gh release create "$TAG" dist/SukelaLite.ipa \
+              --repo "$DIST_REPO" \
               --title "$TITLE" \
-              --notes "Imzasiz build, SideStore ile kurulur. Commit: $SHA"
+              --notes "Imzasiz build, SideStore ile kurulur. Kaynak commit: $SHA"
           fi
 
-      - name: SideStore kaynagini guncelle
+      - name: SideStore kaynagini uret
         env:
           COMMIT_MSG: ${{ github.event.head_commit.message }}
         run: |
@@ -79,8 +108,9 @@ jobs:
           if [ -n "$COMMIT_MSG" ]; then
             NOTES="$NOTES - $(printf '%s' "$COMMIT_MSG" | head -n 1)"
           fi
+          # --repo dist reposu: manifestteki tum URL'ler oraya isaret etmeli.
           node tools/update-source.mjs \
-            --repo "${{ github.repository }}" \
+            --repo "$DIST_REPO" \
             --version "${{ steps.meta.outputs.version }}" \
             --build "${{ steps.meta.outputs.build }}" \
             --tag "${{ steps.meta.outputs.tag }}" \
@@ -88,15 +118,38 @@ jobs:
             --date "${{ steps.meta.outputs.date }}" \
             --notes "$NOTES"
 
-      - name: Kaynagi main'e geri yaz
+      - name: Kaynagi dist reposuna yaz
+        working-directory: distrepo
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/source.json
+          # Bos repo klonlandiysa HEAD dogmamis olur; checkout -b burada
+          # patlayabiliyor, symbolic-ref her iki durumda da guvenli.
+          if ! git rev-parse --verify HEAD >/dev/null 2>&1; then
+            git symbolic-ref HEAD refs/heads/main
+          fi
+          mkdir -p docs
+          cp ../docs/source.json ../docs/icon.png docs/
+          if [ ! -f README.md ]; then
+            printf '%s\n' \
+              '# eksi-reader-dist' \
+              '' \
+              "Sukela Lite'in dagitim deposu. Kaynak kod burada degil." \
+              '' \
+              'Bu repo yalnizca SideStore icin gereken dosyalari tutuyor:' \
+              '`docs/source.json`, `docs/icon.png` ve Releaselerdeki imzasiz IPA.' \
+              'Hepsini GitHub Actions yaziyor, elle duzenleme.' \
+              '' \
+              'SideStore kaynagi:' \
+              '' \
+              '```' \
+              "https://raw.githubusercontent.com/${DIST_REPO}/main/docs/source.json" \
+              '```' > README.md
+          fi
+          git add docs README.md
           if git diff --cached --quiet; then
             echo "degisiklik yok"
             exit 0
           fi
-          git commit -m "chore(source): ${{ steps.meta.outputs.tag }} [skip ci]"
-          git pull --rebase origin "${{ github.ref_name }}"
-          git push origin "HEAD:${{ github.ref_name }}"
+          git commit -m "chore(source): ${{ steps.meta.outputs.tag }}"
+          git push origin HEAD:main
