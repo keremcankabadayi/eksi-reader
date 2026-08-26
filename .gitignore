@@ -1,0 +1,16 @@
+# XcodeGen üretir
+*.xcodeproj/
+Resources/Info.plist
+
+# Build çıktıları
+build/
+dist/
+DerivedData/
+*.ipa
+sim-screenshot.png
+
+# macOS
+.DS_Store
+
+# Önceki oturumun konuşma exportu, repoya girmiyor
+session.md

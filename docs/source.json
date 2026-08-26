@@ -1,0 +1,24 @@
+{
+  "name": "Şükela Lite",
+  "identifier": "com.kerem.sukelalite.source",
+  "subtitle": "Reklamsız kişisel Ekşi Sözlük okuyucusu",
+  "description": "Kişisel kullanım için yazılmış, reklamsız Ekşi Sözlük okuyucusu. Yayınlanmıyor; SideStore ile kendi cihaza kuruluyor.",
+  "iconURL": "https://raw.githubusercontent.com/keremcankabadayi/eksi-reader/main/docs/icon.png",
+  "website": "https://github.com/keremcankabadayi/eksi-reader",
+  "tintColor": "#81C14B",
+  "apps": [
+    {
+      "name": "Şükela Lite",
+      "bundleIdentifier": "com.kerem.sukelalite",
+      "developerName": "kerem",
+      "subtitle": "Reklamsız Ekşi okuyucusu",
+      "localizedDescription": "Gündem ve debe akışlarını reklamsız okumak için yazılmış kişisel istemci.",
+      "iconURL": "https://raw.githubusercontent.com/keremcankabadayi/eksi-reader/main/docs/icon.png",
+      "tintColor": "#81C14B",
+      "category": "reading",
+      "screenshots": [],
+      "versions": []
+    }
+  ],
+  "news": []
+}

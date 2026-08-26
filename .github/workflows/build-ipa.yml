@@ -1,0 +1,102 @@
+name: build-ipa
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-ipa
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
+      - name: Ortam bilgisi
+        run: |
+          xcodebuild -version
+          node --version
+
+      - name: XcodeGen kur
+        run: brew install xcodegen
+
+      - name: Surum bilgisini hesapla
+        id: meta
+        run: |
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          BUILD="${{ github.run_number }}"
+          {
+            echo "version=$VERSION"
+            echo "build=$BUILD"
+            echo "tag=v${VERSION}-${BUILD}"
+            echo "date=$(date -u +%Y-%m-%d)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Imzasiz IPA derle
+        env:
+          MARKETING_VERSION: ${{ steps.meta.outputs.version }}
+          BUILD_NUMBER: ${{ steps.meta.outputs.build }}
+        run: ./build-ipa.sh
+
+      - name: IPA'yi artifact olarak sakla
+        uses: actions/upload-artifact@v4
+        with:
+          name: SukelaLite-${{ steps.meta.outputs.tag }}
+          path: dist/SukelaLite.ipa
+
+      - name: Release olustur
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          TITLE: "Sukela Lite ${{ steps.meta.outputs.version }} (${{ steps.meta.outputs.build }})"
+          SHA: ${{ github.sha }}
+        run: |
+          # Ayni kosu tekrar calistirilirsa run_number degismiyor, tag zaten var olur.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/SukelaLite.ipa --clobber
+          else
+            gh release create "$TAG" dist/SukelaLite.ipa \
+              --title "$TITLE" \
+              --notes "Imzasiz build, SideStore ile kurulur. Commit: $SHA"
+          fi
+
+      - name: SideStore kaynagini guncelle
+        env:
+          COMMIT_MSG: ${{ github.event.head_commit.message }}
+        run: |
+          NOTES="Build ${{ steps.meta.outputs.build }}"
+          if [ -n "$COMMIT_MSG" ]; then
+            NOTES="$NOTES - $(printf '%s' "$COMMIT_MSG" | head -n 1)"
+          fi
+          node tools/update-source.mjs \
+            --repo "${{ github.repository }}" \
+            --version "${{ steps.meta.outputs.version }}" \
+            --build "${{ steps.meta.outputs.build }}" \
+            --tag "${{ steps.meta.outputs.tag }}" \
+            --ipa "dist/SukelaLite.ipa" \
+            --date "${{ steps.meta.outputs.date }}" \
+            --notes "$NOTES"
+
+      - name: Kaynagi main'e geri yaz
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/source.json
+          if git diff --cached --quiet; then
+            echo "degisiklik yok"
+            exit 0
+          fi
+          git commit -m "chore(source): ${{ steps.meta.outputs.tag }} [skip ci]"
+          git pull --rebase origin "${{ github.ref_name }}"
+          git push origin "HEAD:${{ github.ref_name }}"
