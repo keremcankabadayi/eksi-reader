@@ -85,24 +85,12 @@ jobs:
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
+          # Dist reposunda yalnizca docs/source.json, docs/icon.png ve
+          # Releaselerdeki IPA durur. Ilk commit bos: sadece release
+          # atilabilsin diye bir HEAD gerekiyor, dosya gerekmiyor.
           if ! git rev-parse --verify HEAD >/dev/null 2>&1; then
             git symbolic-ref HEAD refs/heads/main
-            printf '%s\n' \
-              '# er-dist' \
-              '' \
-              "Sukela Lite'in dagitim deposu. Kaynak kod burada degil." \
-              '' \
-              'Bu repo yalnizca SideStore icin gereken dosyalari tutuyor:' \
-              '`docs/source.json`, `docs/icon.png` ve Releaselerdeki imzasiz IPA.' \
-              'Hepsini GitHub Actions yaziyor, elle duzenleme.' \
-              '' \
-              'SideStore kaynagi:' \
-              '' \
-              '```' \
-              "https://raw.githubusercontent.com/${DIST_REPO}/main/docs/source.json" \
-              '```' > README.md
-            git add README.md
-            git commit -m "chore: dagitim deposunu baslat"
+            git commit --allow-empty -m "chore: dagitim deposunu baslat"
             git push origin HEAD:main
             echo "dist reposu ilklendirildi"
           fi
@@ -153,7 +141,10 @@ jobs:
       - name: Kaynagi dist reposuna yaz
         working-directory: distrepo
         run: |
-          # Dal ve README'yi "Dist reposunu hazirla" adimi zaten kurdu.
+          # Dali "Dist reposunu hazirla" adimi kurdu.
+          # Dist reposunda yalnizca docs/ durur; onceki surumlerin biraktigi
+          # README varsa temizleniyor. Ilk koşudan sonra bu satir no-op.
+          git rm -q --ignore-unmatch README.md
           mkdir -p docs
           cp ../docs/source.json ../docs/icon.png docs/
           git add docs
