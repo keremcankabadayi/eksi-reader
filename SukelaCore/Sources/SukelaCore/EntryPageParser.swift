@@ -7,6 +7,9 @@ import SwiftSoup
 public enum EntryPageParser {
     public static func parse(html: String) throws -> TopicPage {
         let document = try SwiftSoup.parse(html)
+        // Pretty print entry gövdesine satır sonu sokuyor: "ayakta, <a>bkz</a>"
+        // iki satıra bölünüyor. Gövdeyi olduğu gibi almamız gerekiyor.
+        document.outputSettings().prettyPrint(pretty: false)
 
         // Başlık bilgisi h1'in data- özniteliklerinde duruyor.
         let titleElement = try document.select("h1[id^=title]").first()

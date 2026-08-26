@@ -1,0 +1,271 @@
+import Foundation
+import WebKit
+import SukelaCore
+
+enum FetchError: LocalizedError {
+    case cloudflareBlocked
+    case noWindow
+    case badResponse
+    case httpStatus(Int)
+
+    var errorDescription: String? {
+        switch self {
+        case .cloudflareBlocked:
+            return "Cloudflare doğrulaması geçilemedi. Birazdan tekrar dene."
+        case .noWindow:
+            return "Uygulama penceresi bulunamadı."
+        case .badResponse:
+            return "Sunucudan beklenmeyen yanıt geldi."
+        case let .httpStatus(code):
+            return "Sunucu \(code) döndü."
+        }
+    }
+}
+
+/// Ekşi Cloudflare arkasında; düz `URLSession` isteği 403 alıyor.
+///
+/// Çözüm: gizli bir `WKWebView` açıp challenge'ı gerçek WebKit'e çözdürmek,
+/// sonraki istekleri de sayfanın kendi JS bağlamında `fetch()` ile atmak.
+/// Böylece TLS parmak izi, çerezler ve tarayıcıya ait başlıklar gerçek oluyor.
+///
+/// Yaklaşım emreisik95/eksilik-os (MIT) projesinden alındı.
+@MainActor
+final class WebViewFetcher: NSObject {
+    static let shared = WebViewFetcher()
+
+    private var webView: WKWebView?
+    private var hostWindow: UIWindow?
+    private var isReady = false
+    private var isBootstrapping = false
+    private var waiters: [CheckedContinuation<Bool, Never>] = []
+    private var mainFrameStatusCode: Int?
+    private var mainFrameHeaders: [String: String] = [:]
+    private var timeoutTask: Task<Void, Never>?
+
+    private static let bootstrapTimeout: Duration = .seconds(30)
+
+    private override init() { super.init() }
+
+    // MARK: - Public
+
+    func fetch(_ url: URL) async throws -> String {
+        guard await bootstrap() else { throw FetchError.cloudflareBlocked }
+
+        var response = try await runFetch(url)
+        if CloudflareChallenge.isChallenge(headers: response.headers, html: response.body) {
+            // Oturum bayatlamış: baştan bootstrap edip bir kez daha deniyoruz.
+            invalidate()
+            guard await bootstrap() else { throw FetchError.cloudflareBlocked }
+            response = try await runFetch(url)
+        }
+
+        guard (200...299).contains(response.status) else {
+            throw FetchError.httpStatus(response.status)
+        }
+        return response.body
+    }
+
+    // MARK: - Bootstrap
+
+    private func bootstrap() async -> Bool {
+        if isReady, webView != nil { return true }
+
+        return await withCheckedContinuation { continuation in
+            waiters.append(continuation)
+            guard !isBootstrapping else { return }
+            isBootstrapping = true
+            startBootstrap()
+        }
+    }
+
+    private func startBootstrap() {
+        mainFrameStatusCode = nil
+        mainFrameHeaders = [:]
+
+        let configuration = WKWebViewConfiguration()
+        configuration.websiteDataStore = .default()
+
+        let webView = WKWebView(
+            frame: CGRect(x: 0, y: 0, width: 390, height: 844),
+            configuration: configuration
+        )
+        webView.navigationDelegate = self
+        self.webView = webView
+
+        // WebKit görünmeyen bir web view'ın JS'ini kısıtlıyor; gerçek bir
+        // pencereye bağlamak zorundayız. Neredeyse şeffaf ve dokunulamaz.
+        guard attachHostWindow(for: webView) else {
+            finishBootstrap(success: false)
+            return
+        }
+
+        guard let url = URL(string: EksiEndpoint.baseURL + "/") else {
+            finishBootstrap(success: false)
+            return
+        }
+        webView.load(URLRequest(url: url))
+
+        timeoutTask = Task { [weak self] in
+            try? await Task.sleep(for: Self.bootstrapTimeout)
+            guard !Task.isCancelled else { return }
+            self?.finishBootstrap(success: false)
+        }
+    }
+
+    private func finishBootstrap(success: Bool) {
+        guard isBootstrapping else { return }
+        isBootstrapping = false
+        isReady = success
+        timeoutTask?.cancel()
+        timeoutTask = nil
+
+        if !success { invalidate() }
+
+        let pending = waiters
+        waiters.removeAll()
+        pending.forEach { $0.resume(returning: success) }
+    }
+
+    private func invalidate() {
+        isReady = false
+        webView?.stopLoading()
+        webView = nil
+        hostWindow?.isHidden = true
+        hostWindow = nil
+    }
+
+    private func attachHostWindow(for webView: WKWebView) -> Bool {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        guard let scene = scenes.first(where: { $0.activationState == .foregroundActive })
+                ?? scenes.first else {
+            return false
+        }
+
+        let controller = UIViewController()
+        controller.view.backgroundColor = .clear
+        webView.translatesAutoresizingMaskIntoConstraints = false
+        controller.view.addSubview(webView)
+        NSLayoutConstraint.activate([
+            webView.leadingAnchor.constraint(equalTo: controller.view.leadingAnchor),
+            webView.trailingAnchor.constraint(equalTo: controller.view.trailingAnchor),
+            webView.topAnchor.constraint(equalTo: controller.view.topAnchor),
+            webView.bottomAnchor.constraint(equalTo: controller.view.bottomAnchor),
+        ])
+
+        let window = UIWindow(windowScene: scene)
+        window.frame = scene.coordinateSpace.bounds
+        window.rootViewController = controller
+        window.windowLevel = UIWindow.Level(rawValue: UIWindow.Level.normal.rawValue - 1)
+        window.alpha = 0.01
+        window.isUserInteractionEnabled = false
+        window.accessibilityElementsHidden = true
+        window.isHidden = false
+        hostWindow = window
+        return true
+    }
+
+    // MARK: - In-page fetch
+
+    private struct RawResponse {
+        let status: Int
+        let headers: [String: String]
+        let body: String
+    }
+
+    /// İsteği sayfanın içinde çalıştırıyor. Çerez, User-Agent, TLS parmak izi —
+    /// hepsini tarayıcı kendi koyuyor, biz karışmıyoruz.
+    private static let fetchScript = """
+    const response = await fetch(url, {
+      method: 'GET',
+      credentials: 'include',
+      redirect: 'follow'
+    });
+    const headers = {};
+    response.headers.forEach((value, key) => { headers[key] = value; });
+    return { status: response.status, headers: headers, body: await response.text() };
+    """
+
+    private func runFetch(_ url: URL) async throws -> RawResponse {
+        guard let webView else { throw FetchError.cloudflareBlocked }
+
+        let value = try await webView.callAsyncJavaScript(
+            Self.fetchScript,
+            arguments: ["url": url.absoluteString],
+            in: nil,
+            contentWorld: .page
+        )
+
+        guard let dictionary = value as? [String: Any],
+              let status = dictionary["status"] as? Int,
+              let body = dictionary["body"] as? String else {
+            throw FetchError.badResponse
+        }
+
+        let rawHeaders = dictionary["headers"] as? [String: Any] ?? [:]
+        let headers = rawHeaders.reduce(into: [String: String]()) { result, pair in
+            result[pair.key] = String(describing: pair.value)
+        }
+        return RawResponse(status: status, headers: headers, body: body)
+    }
+}
+
+// MARK: - WKNavigationDelegate
+
+extension WebViewFetcher: WKNavigationDelegate {
+    nonisolated func webView(
+        _ webView: WKWebView,
+        decidePolicyFor navigationResponse: WKNavigationResponse,
+        decisionHandler: @escaping (WKNavigationResponsePolicy) -> Void
+    ) {
+        decisionHandler(.allow)
+        guard navigationResponse.isForMainFrame,
+              let response = navigationResponse.response as? HTTPURLResponse else { return }
+
+        let statusCode = response.statusCode
+        let headers = response.allHeaderFields.reduce(into: [String: String]()) { result, pair in
+            guard let key = pair.key as? String else { return }
+            result[key] = String(describing: pair.value)
+        }
+
+        Task { @MainActor [weak self] in
+            guard let self, self.webView === webView else { return }
+            self.mainFrameStatusCode = statusCode
+            self.mainFrameHeaders = headers
+        }
+    }
+
+    nonisolated func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+        Task { @MainActor [weak self] in
+            guard let self, self.webView === webView else { return }
+
+            let title = (try? await webView.evaluateJavaScript("document.title")) as? String ?? ""
+            let html = (try? await webView.evaluateJavaScript(
+                "document.documentElement.outerHTML"
+            )) as? String ?? ""
+
+            guard self.webView === webView else { return }
+
+            // Challenge sürüyorsa sayfa birkaç kez yeniden yükleniyor;
+            // hazır olana kadar bekliyoruz, zaman aşımı bizi kurtarıyor.
+            guard CloudflareChallenge.isReady(
+                statusCode: self.mainFrameStatusCode,
+                headers: self.mainFrameHeaders,
+                title: title,
+                html: html
+            ) else { return }
+
+            self.finishBootstrap(success: true)
+        }
+    }
+
+    nonisolated func webView(
+        _ webView: WKWebView,
+        didFailProvisionalNavigation navigation: WKNavigation!,
+        withError error: Error
+    ) {
+        Task { @MainActor [weak self] in
+            guard let self, self.webView === webView else { return }
+            self.finishBootstrap(success: false)
+        }
+    }
+}

@@ -1,23 +1,8 @@
 import Foundation
+import SukelaCore
 
-/// Bir başlık. Şu an mock veriden geliyor; gerçek veri katmanı geldiğinde
-/// alanlar aynı kalacak şekilde doldurulacak.
-struct Topic: Identifiable, Hashable {
-    let id: Int
-    let title: String
-    let entryCount: Int
-}
-
-/// Bir entry.
-struct Entry: Identifiable, Hashable {
-    let id: Int
-    let body: String
-    let author: String
-    let date: String
-    let favCount: Int
-}
-
-/// Uygulamadaki akışlar.
+/// Uygulamadaki akışlar. Model tipleri (Topic, Entry, TopicPage) SukelaCore'dan
+/// geliyor; burada yalnızca uygulamaya özgü olanlar duruyor.
 enum Feed: String, CaseIterable, Identifiable {
     case gundem
     case debe
@@ -37,10 +22,17 @@ enum Feed: String, CaseIterable, Identifiable {
         case .debe: return "star"
         }
     }
+
+    var endpoint: EksiEndpoint {
+        switch self {
+        case .gundem: return .gundem()
+        case .debe: return .debe
+        }
+    }
 }
 
-/// Akışları sağlayan kaynak. Mock ve gerçek uygulama bunu paylaşacak.
+/// Akışları sağlayan kaynak. Gerçek uygulama ve mock bunu paylaşıyor.
 protocol FeedProviding {
-    func topics(for feed: Feed) -> [Topic]
-    func entries(for topic: Topic) -> [Entry]
+    func topics(for feed: Feed) async throws -> [Topic]
+    func topicPage(link: String, page: Int) async throws -> TopicPage
 }

@@ -12,10 +12,18 @@ settings:
     CURRENT_PROJECT_VERSION: 1
     SWIFT_VERSION: "5.9"
 
+# Parse mantığı ayrı bir yerel pakette: WebKit içermiyor, Linux'ta
+# `swift test --package-path SukelaCore` ile Mac olmadan koşuyor.
+packages:
+  SukelaCore:
+    path: SukelaCore
+
 targets:
   SukelaLite:
     type: application
     platform: iOS
+    dependencies:
+      - package: SukelaCore
     sources:
       - path: Sources
       - path: Resources/Assets.xcassets
