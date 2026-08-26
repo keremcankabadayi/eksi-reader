@@ -7,7 +7,13 @@ struct EksiFeedProvider: FeedProviding {
 
     func topics(for feed: Feed) async throws -> [Topic] {
         let html = try await fetch(feed.endpoint)
-        return try TopicListParser.parse(html: html)
+        switch feed {
+        case .gundem:
+            return try TopicListParser.parse(html: html)
+        case .debe:
+            // DEBE başlık değil entry döndürüyor, bağlantıları da farklı biçimde.
+            return try DebeParser.parse(html: html)
+        }
     }
 
     func topicPage(link: String, page: Int) async throws -> TopicPage {
