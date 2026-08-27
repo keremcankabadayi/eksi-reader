@@ -44,6 +44,7 @@ final class WebViewFetcher: NSObject {
     private var mainFrameStatusCode: Int?
     private var mainFrameHeaders: [String: String] = [:]
     private var timeoutTask: Task<Void, Never>?
+    private var bootstrapStart: ContinuousClock.Instant?
 
     private static let bootstrapTimeout: Duration = .seconds(30)
 
@@ -67,8 +68,17 @@ final class WebViewFetcher: NSObject {
 
     // MARK: - Public
 
+    /// Uygulama açılır açılmaz çağrılıyor. Cloudflare doğrulaması ilk isteğin
+    /// içinde değil, kullanıcı daha sekmeye bakarken arka planda bitiyor.
+    func prewarm() async {
+        _ = await bootstrap()
+    }
+
     func fetch(_ url: URL, headers: [String: String] = [:]) async throws -> FetchedPage {
-        guard await bootstrap() else { throw FetchError.cloudflareBlocked }
+        let started = ContinuousClock.now
+        guard await Stopwatch.measure("bootstrap beklendi", { await bootstrap() }) else {
+            throw FetchError.cloudflareBlocked
+        }
 
         var response = try await runFetch(url, headers: headers)
         if CloudflareChallenge.isChallenge(headers: response.headers, html: response.body) {
@@ -82,6 +92,7 @@ final class WebViewFetcher: NSObject {
         guard (200...299).contains(response.status) else {
             throw FetchError.httpStatus(response.status)
         }
+        AppLog.info("çekme toplam \(url.lastPathComponent): \(started.duration(to: .now).milliseconds)")
         return FetchedPage(url: url, status: response.status, html: response.body)
     }
 
@@ -100,6 +111,7 @@ final class WebViewFetcher: NSObject {
 
     private func startBootstrap() {
         AppLog.info("bootstrap başlıyor")
+        bootstrapStart = .now
         mainFrameStatusCode = nil
         mainFrameHeaders = [:]
 
@@ -142,10 +154,12 @@ final class WebViewFetcher: NSObject {
 
         if !success { invalidate() }
 
+        let elapsed = bootstrapStart.map { $0.duration(to: .now).milliseconds } ?? "-"
+        bootstrapStart = nil
         if success {
-            AppLog.info("bootstrap tamam")
+            AppLog.info("bootstrap tamam: \(elapsed)")
         } else {
-            AppLog.warn("bootstrap başarısız")
+            AppLog.warn("bootstrap başarısız: \(elapsed)")
         }
         let pending = waiters
         waiters.removeAll()
@@ -232,6 +246,7 @@ final class WebViewFetcher: NSObject {
     private func runFetch(_ url: URL, headers: [String: String]) async throws -> RawResponse {
         guard let webView else { throw FetchError.cloudflareBlocked }
 
+        let requestStart = ContinuousClock.now
         let value: Any?
         do {
             value = try await webView.callAsyncJavaScript(
@@ -263,7 +278,10 @@ final class WebViewFetcher: NSObject {
             AppLog.error("JS yanıtında status/body yok: \(dictionary.keys.sorted())")
             throw FetchError.badResponse
         }
-        AppLog.info("fetch \(url.absoluteString) -> HTTP \(status), \(body.count) karakter")
+        AppLog.info(
+            "fetch \(url.absoluteString) -> HTTP \(status), \(body.count) karakter,"
+            + " \(requestStart.duration(to: .now).milliseconds)"
+        )
 
         let rawHeaders = dictionary["headers"] as? [String: Any] ?? [:]
         let headers = rawHeaders.reduce(into: [String: String]()) { result, pair in

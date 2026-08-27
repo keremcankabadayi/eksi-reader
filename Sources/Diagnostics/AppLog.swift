@@ -61,3 +61,33 @@ final class AppLog: ObservableObject {
         Task { @MainActor in shared.append(level, message) }
     }
 }
+
+/// Süre ölçümü. Neyin ne kadar sürdüğünü günlüğe düşürmek için.
+extension Duration {
+    /// "1234 ms" biçiminde.
+    var milliseconds: String {
+        let parts = components
+        let value = Double(parts.seconds) * 1000
+            + Double(parts.attoseconds) / 1_000_000_000_000_000
+        return String(format: "%.0f ms", value)
+    }
+}
+
+enum Stopwatch {
+    /// İşi ölçüp süreyi günlüğe yazıyor. Hata durumunda da yazıyor:
+    /// yavaşlığın nerede olduğunu görmek için başarısız denemeler de önemli.
+    static func measure<T>(
+        _ label: String,
+        _ work: () async throws -> T
+    ) async rethrows -> T {
+        let start = ContinuousClock.now
+        do {
+            let result = try await work()
+            AppLog.info("\(label): \(start.duration(to: .now).milliseconds)")
+            return result
+        } catch {
+            AppLog.warn("\(label): \(start.duration(to: .now).milliseconds) (hata)")
+            throw error
+        }
+    }
+}

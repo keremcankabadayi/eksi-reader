@@ -57,15 +57,19 @@ struct EksiFeedProvider: FeedProviding {
     ]
 
     func topics(for feed: Feed) async throws -> [Topic] {
+        let started = ContinuousClock.now
         let page = try await fetch(feed.endpoint)
-        let topics: [Topic]
-        switch feed {
-        case .gundem:
-            topics = try TopicListParser.parse(html: page.html)
-        case .debe:
-            // DEBE başlık değil entry döndürüyor, bağlantıları da farklı biçimde.
-            topics = try DebeParser.parse(html: page.html)
+
+        let topics: [Topic] = try await Stopwatch.measure("ayrıştırma \(feed.rawValue)") {
+            switch feed {
+            case .gundem:
+                return try TopicListParser.parse(html: page.html)
+            case .debe:
+                // DEBE başlık değil entry döndürüyor, bağlantıları da farklı biçimde.
+                return try DebeParser.parse(html: page.html)
+            }
         }
+        AppLog.info("\(feed.rawValue) uçtan uca: \(started.duration(to: .now).milliseconds)")
 
         AppLog.info("\(feed.rawValue): \(topics.count) başlık ayrıştırıldı")
         guard !topics.isEmpty else {
@@ -76,8 +80,12 @@ struct EksiFeedProvider: FeedProviding {
     }
 
     func topicPage(link: String, page: Int) async throws -> TopicPage {
+        let started = ContinuousClock.now
         let fetched = try await fetch(.topic(link: link, page: page))
-        let parsed = try EntryPageParser.parse(html: fetched.html)
+        let parsed = try await Stopwatch.measure("ayrıştırma başlık sayfası") {
+            try EntryPageParser.parse(html: fetched.html)
+        }
+        AppLog.info("başlık sayfası uçtan uca: \(started.duration(to: .now).milliseconds)")
 
         AppLog.info("\(link): \(parsed.entries.count) entry, sayfa \(parsed.currentPage)/\(parsed.pageCount)")
         guard !parsed.entries.isEmpty else {
