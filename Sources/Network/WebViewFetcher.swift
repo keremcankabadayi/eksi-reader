@@ -74,6 +74,13 @@ final class WebViewFetcher: NSObject {
         _ = await bootstrap()
     }
 
+    /// Oturum değişti (giriş/çıkış): eldeki sayfa bayat, bir sonraki istek
+    /// tarayıcıyı yeniden kuruyor.
+    func reset() {
+        AppLog.info("tarayıcı sıfırlandı")
+        invalidate()
+    }
+
     func fetch(_ url: URL, headers: [String: String] = [:]) async throws -> FetchedPage {
         let started = ContinuousClock.now
         guard await Stopwatch.measure("bootstrap beklendi", { await bootstrap() }) else {

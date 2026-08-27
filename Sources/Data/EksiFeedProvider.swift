@@ -82,6 +82,10 @@ struct EksiFeedProvider: FeedProviding {
     func topicPage(link: String, page: Int?) async throws -> TopicPage {
         let started = ContinuousClock.now
         let fetched = try await fetch(.topic(link: link, page: page))
+        // Tam sayfa geldiyse üst menüde oturum durumu yazıyor; parça HTML
+        // geldiyse ayrıştırıcı "belirsiz" deyip eldeki duruma dokunmuyor.
+        await AuthSession.shared.apply(html: fetched.html)
+
         let parsed = try await Stopwatch.measure("ayrıştırma başlık sayfası") {
             try EntryPageParser.parse(html: fetched.html)
         }

@@ -10,6 +10,10 @@ public enum EksiEndpoint: Hashable, Sendable {
     /// gündemde, daha önce açtığın başlık için "nereden devam edeceğin"
     /// bilgisini sorguda veriyor; atarsak başlık hep baştan açılıyor.
     case topic(link: String, page: Int? = nil)
+    /// Yazar girişi formu.
+    case login
+    /// Çıkış.
+    case logout
 
     public static let baseURL = "https://eksisozluk.com"
 
@@ -19,6 +23,10 @@ public enum EksiEndpoint: Hashable, Sendable {
             return Self.make(path: "/basliklar/gundem", query: [], page: page)
         case .debe:
             return Self.make(path: "/debe", query: [], page: nil)
+        case .login:
+            return Self.make(path: "/giris", query: [], page: nil)
+        case .logout:
+            return Self.make(path: "/terk", query: [], page: nil)
         case let .topic(link, page):
             let (path, query) = Self.split(link)
             guard let page else {

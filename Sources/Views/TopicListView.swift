@@ -3,6 +3,8 @@ import SukelaCore
 
 struct TopicListView: View {
     let feed: Feed
+    /// Üst bardaki menü düğmesi; sağdaki çekmeceyi RootView açıyor.
+    var openMenu: (() -> Void)? = nil
     var provider: FeedProviding = EksiFeedProvider.shared
 
     @State private var topics: [Topic] = []
@@ -47,11 +49,20 @@ struct TopicListView: View {
                 Text(feed.title)
                     .font(.headline)
             }
-            // Önbellekteki liste dururken tazesi geliyor; sessizce olmasın.
             ToolbarItem(placement: .navigationBarTrailing) {
-                if refreshing && !topics.isEmpty {
-                    // Üst bar dolu renkte; gösterge beyaz olmalı.
-                    BrandLoader(width: 16, tint: .white)
+                HStack(spacing: 14) {
+                    // Önbellekteki liste dururken tazesi geliyor; sessizce
+                    // olmasın. Üst bar dolu renkte, gösterge beyaz.
+                    if refreshing && !topics.isEmpty {
+                        BrandLoader(width: 16, tint: .white)
+                    }
+
+                    if let openMenu {
+                        Button(action: openMenu) {
+                            Image(systemName: "line.3.horizontal")
+                        }
+                        .accessibilityLabel("menü")
+                    }
                 }
             }
         }

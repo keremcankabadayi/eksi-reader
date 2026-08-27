@@ -31,9 +31,16 @@ struct SukelaLiteApp: App {
             .roundedFont()
             // Varsayılan açık tema; ayarlardan değiştirilebiliyor.
             .preferredColorScheme(theme.colorScheme)
+            // Menü ve giriş ekranı aynı oturumu paylaşıyor.
+            .environmentObject(AuthSession.shared)
             // Cloudflare doğrulamasını ilk istek beklemesin diye
             // uygulama açılır açılmaz arka planda başlatıyoruz.
-            .task { await WebViewFetcher.shared.prewarm() }
+            .task {
+                await WebViewFetcher.shared.prewarm()
+                // Çerezler silinmişse (WebKit temizliği, 7 günlük imza
+                // yenilemesi) menüde "girişli" yazmasın.
+                await AuthSession.shared.verifyCookies()
+            }
         }
     }
 }

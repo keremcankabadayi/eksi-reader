@@ -36,6 +36,20 @@ Reklamsız, kişisel Ekşi Sözlük okuyucusu. Yayınlanmayacak, App Store'a git
 - Araç betikleri Node ile yazıldı, Python değil: bu Codespaces imajındaki Python
   stdlib kırpılmış (`json` modülü bile yok), Node hem burada hem macOS runner'da var.
 
+## Giriş
+
+Yazar girişi Ekşi'nin kendi `/giris` sayfasında, gömülü bir `WKWebView`
+içinde yapılıyor (`LoginView`). **Şifre uygulamaya hiç uğramıyor**, captcha ve
+benzeri ne varsa sitenin akışında kalıyor. Giriş bitince elimizde kalan tek
+şey çerezler; onları WebKit'in kendi deposu (`WKWebsiteDataStore.default()`)
+diskte tutuyor ve veri çeken gizli tarayıcı da aynı depoyu kullandığı için
+istekler kendiliğinden girişli oluyor. Ayrıca bir yere çerez kopyalamıyoruz.
+`AuthSession` yalnızca "girişli miyiz, nick ne" bilgisini saklıyor.
+
+Dikkat: `SessionBridge` Ekşi çerezlerinin hepsini App Group'a yazıyor, oturum
+çerezi de buna dahil. Aynı uygulamanın kutusu, ama widget'a giden veriyi
+genişletirken bunu hatırla.
+
 ## Widget
 
 Gündem widget'ı `Widget/` altında, ayrı bir app-extension hedefi. **Veriyi kendi
