@@ -11,7 +11,12 @@ struct TopicDetailView: View {
     @State private var pages: [TopicPage] = []
     @State private var phase: LoadPhase = .idle
     @State private var loadingPrevious = false
+    @State private var navigating = false
     @State private var previousFailure: String?
+    @State private var pagingFailure: String?
+
+    /// Sayfa değiştirince listenin başına dönmek için.
+    private static let topAnchor = "top"
     /// Gövdedeki bir bkz bağlantısına tıklanınca açılan başlık.
     @State private var linkedTopic: Topic?
 
@@ -28,6 +33,9 @@ struct TopicDetailView: View {
                         .padding(.horizontal)
                 default:
                     LazyVStack(alignment: .leading, spacing: 24) {
+                        // Sayfa değişince buraya kaydırıyoruz.
+                        Color.clear.frame(height: 0).id(Self.topAnchor)
+
                         if let preceding = pages.first?.precedingEntryCount, preceding > 0 {
                             PreviousEntriesButton(
                                 count: preceding,
@@ -42,6 +50,17 @@ struct TopicDetailView: View {
                             EntryRow(entry: entry, fontSize: fontSize, openInApp: open(link:title:))
                                 .id(entry.id)
                         }
+
+                        if let last = pages.last, last.pageCount > 1 {
+                            PagerBar(
+                                current: last.currentPage,
+                                total: last.pageCount,
+                                loading: navigating,
+                                failure: pagingFailure
+                            ) { page in
+                                await go(to: page, anchoring: proxy)
+                            }
+                        }
                     }
                     .padding()
                 }
@@ -51,17 +70,19 @@ struct TopicDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             // Varsayılan inline başlık tek satır ve uzun başlığı "..." ile
-            // kesiyor. Ekşi başlıkları uzun; iki satıra izin verip sığmazsa
-            // puntoyu daraltıyoruz.
+            // kesiyor. Ekşi başlıkları uzun; iki satıra izin veriyoruz.
+            // .headline iki satırda üst bara sığmıyor, bir punto küçüğü sığıyor.
             ToolbarItem(placement: .principal) {
                 Text(pages.first?.title ?? topic.title)
-                    .font(.headline)
+                    .font(.subheadline.weight(.semibold))
                     .lineLimit(2)
-                    .minimumScaleFactor(0.6)
+                    .minimumScaleFactor(0.7)
                     .multilineTextAlignment(.center)
                     .frame(maxWidth: .infinity)
             }
         }
+        // Geri düğmesinde yalnızca ok kalsın, önceki ekranın adı yazılmasın.
+        .toolbarRole(.editor)
         .refreshable { await load() }
         // Liste ekranındaki `navigationDestination(for: Topic.self)` ile
         // çakışmasın diye bağlantılar isPresented ile açılıyor.
@@ -91,6 +112,7 @@ struct TopicDetailView: View {
     private func load() async {
         phase = .loading
         previousFailure = nil
+        pagingFailure = nil
         do {
             // page: nil — bağlantı nereye işaret ediyorsa oraya. Ekşi daha önce
             // açtığın başlıkta kaldığın sayfayı veriyor, yani başlık ortadan
@@ -100,6 +122,22 @@ struct TopicDetailView: View {
         } catch {
             pages = []
             phase = .failed(FailureInfo(error))
+        }
+    }
+
+    /// Sayfalama okları: yığını atıp istenen sayfayı gösteriyor.
+    private func go(to page: Int, anchoring proxy: ScrollViewProxy) async {
+        guard !navigating, page != pages.last?.currentPage else { return }
+        navigating = true
+        pagingFailure = nil
+        defer { navigating = false }
+
+        do {
+            pages = [try await provider.topicPage(link: topic.link, page: page)]
+            proxy.scrollTo(Self.topAnchor, anchor: .top)
+        } catch {
+            // Ekrandaki entry'ler duruyor; hatayı sayfalama barında söylüyoruz.
+            pagingFailure = error.localizedDescription
         }
     }
 
@@ -157,6 +195,57 @@ private struct PreviousEntriesButton: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+}
+
+/// Sayfalama: |<  <  1/3  >  >|
+private struct PagerBar: View {
+    let current: Int
+    let total: Int
+    let loading: Bool
+    let failure: String?
+    let go: (Int) async -> Void
+
+    var body: some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 20) {
+                step("chevron.backward.to.line", to: 1, enabled: current > 1)
+                step("chevron.backward", to: current - 1, enabled: current > 1)
+
+                if loading {
+                    ProgressView()
+                        .frame(minWidth: 44)
+                } else {
+                    Text("\(current)/\(total)")
+                        .font(.callout)
+                        .monospacedDigit()
+                        .frame(minWidth: 44)
+                }
+
+                step("chevron.forward", to: current + 1, enabled: current < total)
+                step("chevron.forward.to.line", to: total, enabled: current < total)
+            }
+            .frame(maxWidth: .infinity)
+
+            if let failure {
+                Text(failure)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.top, 8)
+    }
+
+    private func step(_ symbol: String, to page: Int, enabled: Bool) -> some View {
+        Button {
+            Task { await go(page) }
+        } label: {
+            Image(systemName: symbol)
+                .font(.body)
+                .frame(width: 32, height: 32)
+        }
+        .buttonStyle(.bordered)
+        .disabled(!enabled || loading)
     }
 }
 
