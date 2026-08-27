@@ -21,8 +21,29 @@ public enum EksiEndpoint: Hashable, Sendable {
             return Self.make(path: "/debe", query: [], page: nil)
         case let .topic(link, page):
             let (path, query) = Self.split(link)
-            return Self.make(path: path, query: query, page: page)
+            guard let page else {
+                // Sayfa belirtmedik: bağlantı nereye işaret ediyorsa oraya.
+                return Self.make(path: path, query: query, page: nil)
+            }
+            return Self.make(path: path, query: Self.pinned(query, to: page), page: nil)
         }
+    }
+
+    /// Ekşi bağlantıya konum parametreleri koyuyor: `a=popular` (yalnızca
+    /// popüler entry'ler) ve `focusto=<entry id>` (okunmamış entry'ye odak).
+    /// İkisi de sayfa numarasını yok saydırıp okunmamışın bulunduğu sayfaya
+    /// yönlendiriyor — "önceki entry'ler" hep aynı sayfayı getiriyordu.
+    private static let positionParameters: Set<String> = ["a", "focusto"]
+
+    /// Sayfayı biz seçtiğimizde `p` her zaman yazılıyor (birinci sayfa dahil),
+    /// konum parametreleri atılıyor, diğerlerine dokunulmuyor.
+    private static func pinned(_ query: [URLQueryItem], to page: Int) -> [URLQueryItem] {
+        var items = query.filter { item in
+            let name = item.name.lowercased()
+            return name != "p" && !positionParameters.contains(name)
+        }
+        items.append(URLQueryItem(name: "p", value: String(page)))
+        return items
     }
 
     /// "/foo--123?a=popular&p=5" -> ("/foo--123", [a=popular, p=5])

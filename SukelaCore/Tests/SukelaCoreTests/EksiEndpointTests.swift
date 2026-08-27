@@ -52,18 +52,36 @@ final class EksiEndpointTests: XCTestCase {
 
     // MARK: - Sayfa açıkça verilince
 
-    /// Sayfayı biz belirlediğimizde bağlantıdaki p değişiyor, diğerleri kalıyor.
+    /// Sayfayı biz belirlediğimizde bağlantıdaki p değişiyor, konum
+    /// parametreleri düşüyor, diğerleri kalıyor.
     func testExplicitPageReplacesLinkPage() {
         XCTAssertEqual(
             EksiEndpoint.topic(link: "/foo--1?a=popular&p=5", page: 2).url?.absoluteString,
-            "https://eksisozluk.com/foo--1?a=popular&p=2"
+            "https://eksisozluk.com/foo--1?p=2"
         )
     }
 
-    func testExplicitFirstPageDropsPageParameter() {
+    /// Birinci sayfada da `p` yazılıyor: `p` olmadan Ekşi `a=popular`/`focusto`
+    /// bağlantısını okunmamış entry'nin sayfasına yönlendiriyor, "önceki
+    /// entry'ler" hep aynı sayfayı getiriyordu.
+    func testExplicitFirstPageIsWritten() {
         XCTAssertEqual(
             EksiEndpoint.topic(link: "/foo--1?p=5", page: 1).url?.absoluteString,
-            "https://eksisozluk.com/foo--1"
+            "https://eksisozluk.com/foo--1?p=1"
+        )
+    }
+
+    func testExplicitPageDropsPositionParameters() {
+        XCTAssertEqual(
+            EksiEndpoint.topic(link: "/foo--1?focusto=185944547", page: 3).url?.absoluteString,
+            "https://eksisozluk.com/foo--1?p=3"
+        )
+    }
+
+    func testExplicitPageKeepsOtherParameters() {
+        XCTAssertEqual(
+            EksiEndpoint.topic(link: "/foo--1?day=2026-08-26&a=popular", page: 4).url?.absoluteString,
+            "https://eksisozluk.com/foo--1?day=2026-08-26&p=4"
         )
     }
 
