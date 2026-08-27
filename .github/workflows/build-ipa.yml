@@ -4,19 +4,26 @@ name: build-ipa
 # ayri bir PUBLIC repoya yazilir: SideStore release asset'ini ve source.json'u
 # kimlik dogrulamasi olmadan indirmek zorunda.
 
+# macOS runner dakikalari 10x carpanla faturalaniyor: 1 gercek dakika = 10
+# kota dakikasi. Her push'ta derlemek kotanin yarisini bu repoya yediriyordu
+# (24 saatte 30 kosu ~ 950 faturalanan dakika). Otomatik derleme artik yalnizca
+# VERSION dosyasi degisince kosuyor; ara build icin Actions sekmesinden
+# "Run workflow" ile elle tetikle.
 on:
   push:
     branches: [main]
-    paths-ignore:
-      - "**/*.md"
+    paths:
+      - "VERSION"
   workflow_dispatch:
 
 permissions:
   contents: read
 
+# Arka arkaya push'ta bitmemis kosuyu iptal et: gecersiz kalacak bir macOS
+# build'i sonuna kadar kosturmak bosa 10x dakika demek.
 concurrency:
   group: build-ipa
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 env:
   DIST_REPO: keremcankabadayi/er-dist

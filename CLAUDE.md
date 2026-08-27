@@ -64,6 +64,13 @@ ekle.** Slot maliyeti sıfır.
 
 - Linux'ta Swift kodu derlenemez. Değişiklik sonrası tek gerçek doğrulama CI'ın yeşil
   olması; Actions çıktısına bak.
+- **`build-ipa` artık her push'ta koşmuyor.** macOS runner dakikası 10x çarpanla
+  faturalanıyor ve tek başına aylık kotanın yarısını yiyordu. Otomatik tetik yalnızca
+  `VERSION` değişince; onun dışında Actions sekmesinden "Run workflow" ile elle
+  tetikle. Yani derlemenin doğruluğunu görmek istiyorsan build'i sen başlatacaksın.
+  `core-tests` Linux'ta (1x) her push'ta koşmaya devam ediyor.
+- Arka arkaya push'larda `build-ipa` eski koşuyu iptal eder (`cancel-in-progress`).
+  Son push kazanır; ara commit'ler için ayrı IPA çıkmaz.
 - Telefondaki build'in doğru olduğunu uygulamanın **ayarlar** sekmesindeki sürüm
   satırından kontrol et.
 - `tools/*.mjs` değişirse `node tools/update-source.mjs --repo <owner>/<name>` ve
