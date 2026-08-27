@@ -4,9 +4,9 @@ import Foundation
 ///
 /// SwiftUI dar bir barda `lineLimit(2)` verilse bile metni küçültüp tek satıra
 /// sıkıştırmayı tercih ediyor. Kırılma noktasını kendimiz koyuyoruz: ilk satır
-/// en çok `limit` karakter, kelime ortasından bölünmüyor.
+/// en çok `limit` karakter (varsayılan 40), kelime ortasından bölünmüyor.
 public enum TitleLayout {
-    public static func twoLines(_ title: String, limit: Int = 35) -> String {
+    public static func twoLines(_ title: String, limit: Int = 40) -> String {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count > limit else { return trimmed }
 

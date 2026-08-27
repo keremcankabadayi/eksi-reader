@@ -7,11 +7,11 @@ final class TitleLayoutTests: XCTestCase {
     }
 
     func testBreaksAtLastSpaceBeforeLimit() {
-        // "ligi" ile birlikte ilk satır 37 karakter olurdu, sınır 35.
+        // İlk satır 37 karakter: sınır 40 olduğu için "ligi" da sığıyor.
         let title = "27 ağustos 2026 uefa şampiyonlar ligi kura çekimi"
         XCTAssertEqual(
             TitleLayout.twoLines(title),
-            "27 ağustos 2026 uefa şampiyonlar\nligi kura çekimi"
+            "27 ağustos 2026 uefa şampiyonlar ligi\nkura çekimi"
         )
     }
 
