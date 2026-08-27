@@ -44,13 +44,9 @@ struct TopicDetailView: View {
                     ErrorView(failure: failure) { await load() }
                         .listRowSeparator(.hidden)
                 default:
-                    // Sayfa değişince buraya kaydırıyoruz.
-                    Color.clear
-                        .frame(height: 0)
-                        .id(Self.topAnchor)
-                        .listRowSeparator(.hidden)
-                        .listRowInsets(EdgeInsets())
-
+                    // Çapa için ayrı bir satır koymuyoruz: List sıfır
+                    // yükseklikli satıra da minimum yükseklik verip üstte
+                    // boşluk bırakıyor. Listenin ilk satırı neyse o çapa.
                     if let preceding = pages.first?.precedingEntryCount, preceding > 0 {
                         PreviousEntriesButton(
                             count: preceding,
@@ -59,6 +55,7 @@ struct TopicDetailView: View {
                         ) {
                             await loadPrevious(anchoring: proxy)
                         }
+                        .id(Self.topAnchor)
                         .listRowSeparator(.hidden)
                     }
 
@@ -171,7 +168,11 @@ struct TopicDetailView: View {
         do {
             pages = [try await provider.topicPage(link: topic.link, page: page)]
             rows = Self.render(pages)
-            proxy.scrollTo(Self.topAnchor, anchor: .top)
+            // "N entry daha" satırı varsa çapa odur, yoksa ilk entry.
+            let target: AnyHashable? = (pages.first?.precedingEntryCount ?? 0) > 0
+                ? Self.topAnchor
+                : rows.first?.id
+            if let target { proxy.scrollTo(target, anchor: .top) }
         } catch {
             // Ekrandaki entry'ler duruyor; hatayı sayfalama barında söylüyoruz.
             pagingFailure = error.localizedDescription
