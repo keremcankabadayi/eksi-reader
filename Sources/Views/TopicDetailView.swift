@@ -20,7 +20,9 @@ struct TopicDetailView: View {
     /// Gövdedeki bir bkz bağlantısına tıklanınca açılan başlık.
     @State private var linkedTopic: Topic?
 
-    private var entries: [Entry] { pages.flatMap(\.entries) }
+    /// Çizime hazır satırlar. Gövde ayrıştırması burada bir kez yapılıyor;
+    /// satır çizilirken yapılırsa liste yukarı kaydırırken takılıyor.
+    @State private var rows: [RenderedEntry] = []
 
     /// Sayfalama gerektiren başlıkta son yüklenen sayfa; tek sayfalıkta nil.
     private var pager: TopicPage? {
@@ -52,9 +54,9 @@ struct TopicDetailView: View {
                             }
                         }
 
-                        ForEach(entries) { entry in
-                            EntryRow(entry: entry, fontSize: fontSize, openInApp: open(link:title:))
-                                .id(entry.id)
+                        ForEach(rows) { row in
+                            EntryRow(rendered: row, fontSize: fontSize, openInApp: open(link:title:))
+                                .id(row.id)
                         }
 
                     }
@@ -88,7 +90,9 @@ struct TopicDetailView: View {
             // kesiyor. Ekşi başlıkları uzun; iki satıra izin veriyoruz.
             // .headline iki satırda üst bara sığmıyor, bir punto küçüğü sığıyor.
             ToolbarItem(placement: .principal) {
-                Text(pages.first?.title ?? topic.title)
+                // Sarmayı kendimiz yapıyoruz: SwiftUI dar barda metni
+                // küçültüp tek satıra sıkıştırmayı tercih ediyor.
+                Text(TitleLayout.twoLines(pages.first?.title ?? topic.title))
                     .font(.subheadline.weight(.semibold))
                     .lineLimit(2)
                     .minimumScaleFactor(0.7)
@@ -120,6 +124,10 @@ struct TopicDetailView: View {
         }
     }
 
+    private static func render(_ pages: [TopicPage]) -> [RenderedEntry] {
+        pages.flatMap(\.entries).map(RenderedEntry.init)
+    }
+
     /// bkz bağlantısı: aynı yığında yeni bir başlık ekranı açıyor.
     private func open(link: String, title: String) {
         linkedTopic = Topic(id: link, title: title, slug: "", entryCount: "", link: link)
@@ -134,9 +142,11 @@ struct TopicDetailView: View {
             // açtığın başlıkta kaldığın sayfayı veriyor, yani başlık ortadan
             // açılabiliyor; öncesi "N entry daha" ile yükleniyor.
             pages = [try await provider.topicPage(link: topic.link, page: nil)]
+            rows = Self.render(pages)
             phase = .loaded
         } catch {
             pages = []
+            rows = []
             phase = .failed(FailureInfo(error))
         }
     }
@@ -150,6 +160,7 @@ struct TopicDetailView: View {
 
         do {
             pages = [try await provider.topicPage(link: topic.link, page: page)]
+            rows = Self.render(pages)
             proxy.scrollTo(Self.topAnchor, anchor: .top)
         } catch {
             // Ekrandaki entry'ler duruyor; hatayı sayfalama barında söylüyoruz.
@@ -165,10 +176,11 @@ struct TopicDetailView: View {
 
         // Yukarı ekleme yaptığımızda liste zıplıyor; şu an en üstteki entry'yi
         // işaretleyip ekledikten sonra oraya geri sabitliyoruz.
-        let anchorID = entries.first?.id
+        let anchorID = rows.first?.id
         do {
             let previous = try await provider.topicPage(link: topic.link, page: target)
             pages.insert(previous, at: 0)
+            rows.insert(contentsOf: previous.entries.map(RenderedEntry.init), at: 0)
             if let anchorID {
                 DispatchQueue.main.async { proxy.scrollTo(anchorID, anchor: .top) }
             }
@@ -266,14 +278,16 @@ private struct PagerBar: View {
 }
 
 private struct EntryRow: View {
-    let entry: Entry
+    let rendered: RenderedEntry
     let fontSize: Double
     let openInApp: (String, String) -> Void
+
+    private var entry: Entry { rendered.entry }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             EntryBodyView(
-                segments: entry.segments,
+                rendered: rendered,
                 fontSize: fontSize,
                 openInApp: openInApp
             )
