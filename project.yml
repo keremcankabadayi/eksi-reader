@@ -24,6 +24,8 @@ targets:
     platform: iOS
     dependencies:
       - package: SukelaCore
+      # Widget uygulamanın içine gömülüyor; ayrı bir uygulama slotu yemiyor.
+      - target: SukelaWidgetExtension
     sources:
       - path: Sources
       - path: Resources/Assets.xcassets
@@ -35,6 +37,13 @@ targets:
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         ITSAppUsesNonExemptEncryption: false
+        # Widget'tan başlık açmak için: sukela://topic?link=...&title=...
+        CFBundleURLTypes:
+          - CFBundleURLName: com.kerem.sukelalite
+            CFBundleURLSchemes: [sukela]
+        # SideStore/AltStore imzalarken App Group'u bu anahtardan okuyor;
+        # ücretsiz hesapta entitlement'ı kendisi üretiyor.
+        ALTAppGroups: [group.com.kerem.sukelalite]
         UILaunchScreen: {}
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
@@ -55,6 +64,40 @@ targets:
         ENABLE_USER_SCRIPT_SANDBOXING: NO
         # İmzayı SideStore telefonda atıyor; burada sertifika aranmasın.
         # Cihaz build'inde build-ipa.sh ayrıca CODE_SIGNING_ALLOWED=NO geçiyor.
+        CODE_SIGN_IDENTITY: ""
+        CODE_SIGNING_REQUIRED: NO
+        DEVELOPMENT_TEAM: ""
+
+  # Gündem widget'ı. Veriyi kendi çekmiyor: uygulama gündemi App Group'a
+  # yazıyor, widget okuyor. Extension'da WKWebView yok, Cloudflare'ı orada
+  # aşamayız.
+  SukelaWidgetExtension:
+    type: app-extension
+    platform: iOS
+    dependencies:
+      - package: SukelaCore
+    sources:
+      - path: Widget
+      # Renkler uygulama hedefinde duruyor; widget de aynı paleti kullanıyor.
+      - path: Sources/Theme.swift
+      - path: Resources/Assets.xcassets
+        buildPhase: resources
+    info:
+      path: Resources/WidgetInfo.plist
+      properties:
+        CFBundleDisplayName: gündem
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        ALTAppGroups: [group.com.kerem.sukelalite]
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.kerem.sukelalite.widget
+        GENERATE_INFOPLIST_FILE: NO
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SKIP_INSTALL: YES
         CODE_SIGN_IDENTITY: ""
         CODE_SIGNING_REQUIRED: NO
         DEVELOPMENT_TEAM: ""

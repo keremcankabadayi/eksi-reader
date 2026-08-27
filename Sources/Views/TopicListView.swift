@@ -56,6 +56,10 @@ struct TopicListView: View {
         do {
             topics = try await provider.topics(for: feed)
             phase = .loaded
+            // Widget veriyi kendi çekemiyor; son gündemi ona bırakıyoruz.
+            if feed == .gundem {
+                WidgetBridge.publish(topics)
+            }
         } catch {
             phase = .failed(FailureInfo(error))
         }

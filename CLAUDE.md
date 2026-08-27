@@ -36,6 +36,21 @@ Reklamsız, kişisel Ekşi Sözlük okuyucusu. Yayınlanmayacak, App Store'a git
 - Araç betikleri Node ile yazıldı, Python değil: bu Codespaces imajındaki Python
   stdlib kırpılmış (`json` modülü bile yok), Node hem burada hem macOS runner'da var.
 
+## Widget
+
+Gündem widget'ı `Widget/` altında, ayrı bir app-extension hedefi. **Veriyi kendi
+çekmiyor:** Cloudflare'ı WKWebView ile aşıyoruz, extension'da WebView yok. Uygulama
+gündemi her çektiğinde App Group'a (`group.com.kerem.sukelalite`) yazıyor, widget
+oradan okuyor. Yani widget "uygulamanın son gördüğü gündem"i gösteriyor.
+
+Dokununca `sukela://topic?link=...` açılıyor, `RootView.onOpenURL` başlığı gündem
+sekmesinin yığınına ekliyor.
+
+App Group ücretsiz imzada sorun çıkarabilir: SideStore/AltStore Info.plist'teki
+`ALTAppGroups` anahtarını okuyup entitlement'ı kendisi üretiyor. Çalışmazsa widget
+"gündem yok" gösterir, uygulama etkilenmez. LiveContainer ile kurulumda
+extension'lar hiç çalışmıyor.
+
 ## Sınırlar (Apple kaynaklı, bizim seçimimiz değil)
 
 - Ücretsiz imza 7 gün geçerli.

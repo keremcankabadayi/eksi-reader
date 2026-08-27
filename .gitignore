@@ -1,6 +1,7 @@
 # XcodeGen üretir
 *.xcodeproj/
 Resources/Info.plist
+Resources/WidgetInfo.plist
 
 # Build çıktıları
 build/
