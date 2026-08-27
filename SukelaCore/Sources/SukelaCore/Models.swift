@@ -1,7 +1,9 @@
 import Foundation
 
 /// Bir başlık. `entryCount` kasten String: Ekşi "12" de yazıyor "1,2k" de.
-public struct Topic: Identifiable, Hashable, Sendable {
+/// `Codable`: son çekilen liste diske yazılıyor, uygulama açılırken ağı
+/// beklemeden onu gösteriyor.
+public struct Topic: Identifiable, Hashable, Sendable, Codable {
     public let id: String
     public let title: String
     public let slug: String
