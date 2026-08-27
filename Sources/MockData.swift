@@ -43,7 +43,7 @@ struct MockFeedProvider: FeedProviding {
         (1...3).map { index in
             Entry(
                 id: "\(page)-\(index)",
-                contentHTML: "sayfa \(page), entry \(index). önizleme için sahte veri.",
+                contentHTML: "sayfa \(page), entry \(index). (bkz: <a href=\"/?q=swiftui\">swiftui</a>)",
                 author: Author(id: "1", nick: "kerem"),
                 date: "26.08.2026 18:40",
                 favoriteCount: index * 8

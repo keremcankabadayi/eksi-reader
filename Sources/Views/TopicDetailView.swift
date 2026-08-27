@@ -12,6 +12,8 @@ struct TopicDetailView: View {
     @State private var phase: LoadPhase = .idle
     @State private var loadingPrevious = false
     @State private var previousFailure: String?
+    /// Gövdedeki bir bkz bağlantısına tıklanınca açılan başlık.
+    @State private var linkedTopic: Topic?
 
     private var entries: [Entry] { pages.flatMap(\.entries) }
 
@@ -37,7 +39,7 @@ struct TopicDetailView: View {
                         }
 
                         ForEach(entries) { entry in
-                            EntryRow(entry: entry, fontSize: fontSize)
+                            EntryRow(entry: entry, fontSize: fontSize, openInApp: open(link:title:))
                                 .id(entry.id)
                         }
                     }
@@ -61,10 +63,29 @@ struct TopicDetailView: View {
             }
         }
         .refreshable { await load() }
+        // Liste ekranındaki `navigationDestination(for: Topic.self)` ile
+        // çakışmasın diye bağlantılar isPresented ile açılıyor.
+        .navigationDestination(
+            isPresented: Binding(
+                get: { linkedTopic != nil },
+                set: { if !$0 { linkedTopic = nil } }
+            )
+        ) {
+            if let linkedTopic {
+                // AnyView şart: ekran kendini açıyor, tip silinmezse `some View`
+                // kendi kendine referans veriyor ve derlenmiyor.
+                AnyView(TopicDetailView(topic: linkedTopic, provider: provider))
+            }
+        }
         .task {
             guard pages.isEmpty else { return }
             await load()
         }
+    }
+
+    /// bkz bağlantısı: aynı yığında yeni bir başlık ekranı açıyor.
+    private func open(link: String, title: String) {
+        linkedTopic = Topic(id: link, title: title, slug: "", entryCount: "", link: link)
     }
 
     private func load() async {
@@ -142,13 +163,15 @@ private struct PreviousEntriesButton: View {
 private struct EntryRow: View {
     let entry: Entry
     let fontSize: Double
+    let openInApp: (String, String) -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(entry.plainText)
-                .font(.system(size: fontSize))
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            EntryBodyView(
+                segments: entry.segments,
+                fontSize: fontSize,
+                openInApp: openInApp
+            )
 
             HStack(spacing: 8) {
                 Spacer()
