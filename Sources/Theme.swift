@@ -56,6 +56,48 @@ enum AppTheme: String, CaseIterable, Identifiable {
     }
 }
 
+/// Sekme çubuğu UIKit çiziyor; SwiftUI'nin `fontDesign`'ı oraya geçmiyor,
+/// yazı tipini ayrıca söylüyoruz. Yalnızca font veriliyor, renk ve seçim
+/// vurgusu sistemde kalıyor.
+enum Appearance {
+    static func apply() {
+        guard let descriptor = UIFont.systemFont(ofSize: 10, weight: .medium)
+            .fontDescriptor.withDesign(.rounded) else { return }
+        let font = UIFont(descriptor: descriptor, size: 10)
+        UITabBarItem.appearance().setTitleTextAttributes([.font: font], for: .normal)
+        UITabBarItem.appearance().setTitleTextAttributes([.font: font], for: .selected)
+    }
+}
+
+/// Uygulamanın yazı tipi: San Francisco'nun yuvarlak kesimi (SF Pro
+/// Rounded). Ek font dosyası yok, sistemde hazır.
+///
+/// `fontDesign` iOS 16.1 ile geldi, hedefimiz 16.0: eski sürümde metin
+/// varsayılan SF Pro Text kalıyor, düzen bozulmuyor.
+private struct RoundedFont: ViewModifier {
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 16.1, *) {
+            content.fontDesign(.rounded)
+        } else {
+            content
+        }
+    }
+}
+
+/// Günlük ve teşhis metinleri: hizalama için tek aralıklı kalmalı, kökteki
+/// yuvarlak tasarımı burada geri alıyoruz.
+private struct MonospacedFont: ViewModifier {
+    @ViewBuilder
+    func body(content: Content) -> some View {
+        if #available(iOS 16.1, *) {
+            content.fontDesign(.monospaced)
+        } else {
+            content
+        }
+    }
+}
+
 /// Üst bar: açık temada dolu yeşil, koyu temada siyah; içeriği her iki
 /// durumda da beyaz.
 private struct EksiNavigationBar: ViewModifier {
@@ -75,5 +117,15 @@ private struct EksiNavigationBar: ViewModifier {
 extension View {
     func eksiNavigationBar() -> some View {
         modifier(EksiNavigationBar())
+    }
+
+    /// Kökte bir kez: altındaki bütün metinler yuvarlak kesime geçiyor.
+    func roundedFont() -> some View {
+        modifier(RoundedFont())
+    }
+
+    /// Yuvarlak kesimden muaf tutulan yerler (günlük, ham HTML).
+    func monospacedFont() -> some View {
+        modifier(MonospacedFont())
     }
 }

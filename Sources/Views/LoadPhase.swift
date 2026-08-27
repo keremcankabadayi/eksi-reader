@@ -73,6 +73,7 @@ struct ErrorView: View {
 
                         Text(details)
                             .font(.system(size: 11, design: .monospaced))
+                            .monospacedFont()
                             .textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }

@@ -20,10 +20,12 @@ struct LogsView: View {
                                     .foregroundStyle(color(for: entry.level))
                             }
                             .font(.system(size: 11, design: .monospaced))
+                            .monospacedFont()
                             .foregroundStyle(.secondary)
 
                             Text(entry.message)
                                 .font(.system(size: 12, design: .monospaced))
+                                .monospacedFont()
                                 .textSelection(.enabled)
                         }
                         .padding(.vertical, 2)

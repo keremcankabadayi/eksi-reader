@@ -107,6 +107,7 @@ struct GundemWidgetView: View {
             }
         }
         .padding(10)
+        .roundedFont()
         .widgetBackground()
     }
 
