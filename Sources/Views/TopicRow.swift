@@ -20,15 +20,11 @@ struct TopicRow: View {
             Spacer(minLength: 0)
 
             if !topic.entryCount.isEmpty {
+                // Rozet değil, başlıkla aynı puntoda düz sayı.
                 Text(topic.entryCount)
-                    .font(.system(size: max(10, fontSize - 4)))
+                    .font(.system(size: fontSize))
                     .monospacedDigit()
                     .foregroundStyle(Color.accentColor)
-                    .padding(.horizontal, 6)
-                    .padding(.vertical, 2)
-                    .background(
-                        Capsule().fill(Color.accentColor.opacity(0.15))
-                    )
             }
         }
         .padding(.vertical, 2)

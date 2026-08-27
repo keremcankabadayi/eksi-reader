@@ -18,7 +18,12 @@ struct TopicListView: View {
                     .listRowSeparator(.hidden)
             default:
                 ForEach(Array(topics.enumerated()), id: \.element.id) { index, topic in
-                    NavigationLink(value: topic) {
+                    // NavigationLink kendi ok işaretini çiziyor; satırı
+                    // görünmez bir link'in üstüne koyup oku gizliyoruz.
+                    ZStack {
+                        NavigationLink(value: topic) { EmptyView() }
+                            .opacity(0)
+
                         TopicRow(topic: topic, isEven: index % 2 == 0)
                     }
                     .listRowBackground(TopicRow.background(isEven: index % 2 == 0))
@@ -27,6 +32,14 @@ struct TopicListView: View {
         }
         .listStyle(.plain)
         .navigationTitle(feed.title)
+        // Sabit ve ortalı başlık: kaydırınca küçülüp kaybolmuyor.
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text(feed.title)
+                    .font(.headline)
+            }
+        }
         .navigationDestination(for: Topic.self) { topic in
             TopicDetailView(topic: topic)
         }
