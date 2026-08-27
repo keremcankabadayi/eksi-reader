@@ -38,7 +38,8 @@ struct TopicDetailView: View {
     private func load() async {
         phase = .loading
         do {
-            page = try await provider.topicPage(link: topic.link, page: 1)
+            // page: nil — bağlantı nereye işaret ediyorsa oraya.
+            page = try await provider.topicPage(link: topic.link, page: nil)
             phase = .loaded
         } catch {
             phase = .failed(FailureInfo(error))

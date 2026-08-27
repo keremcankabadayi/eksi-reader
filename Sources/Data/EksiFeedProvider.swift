@@ -79,7 +79,7 @@ struct EksiFeedProvider: FeedProviding {
         return topics
     }
 
-    func topicPage(link: String, page: Int) async throws -> TopicPage {
+    func topicPage(link: String, page: Int?) async throws -> TopicPage {
         let started = ContinuousClock.now
         let fetched = try await fetch(.topic(link: link, page: page))
         let parsed = try await Stopwatch.measure("ayrıştırma başlık sayfası") {

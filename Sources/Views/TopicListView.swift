@@ -17,10 +17,11 @@ struct TopicListView: View {
                 ErrorView(failure: failure) { await load() }
                     .listRowSeparator(.hidden)
             default:
-                ForEach(topics) { topic in
+                ForEach(Array(topics.enumerated()), id: \.element.id) { index, topic in
                     NavigationLink(value: topic) {
-                        TopicRow(topic: topic)
+                        TopicRow(topic: topic, isEven: index % 2 == 0)
                     }
+                    .listRowBackground(TopicRow.background(isEven: index % 2 == 0))
                 }
             }
         }
@@ -47,22 +48,6 @@ struct TopicListView: View {
     }
 }
 
-private struct TopicRow: View {
-    let topic: Topic
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text(topic.title)
-            Spacer(minLength: 12)
-            if !topic.entryCount.isEmpty {
-                Text(topic.entryCount)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-        }
-    }
-}
 
 #Preview {
     NavigationStack {

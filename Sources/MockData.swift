@@ -13,13 +13,13 @@ struct MockFeedProvider: FeedProviding {
         }
     }
 
-    func topicPage(link: String, page: Int) async throws -> TopicPage {
+    func topicPage(link: String, page: Int?) async throws -> TopicPage {
         TopicPage(
             title: "örnek başlık",
             slug: "ornek-baslik",
             topicId: "1",
             entries: Self.entries,
-            currentPage: page,
+            currentPage: page ?? 1,
             pageCount: 1
         )
     }
