@@ -158,6 +158,11 @@ final class WebViewFetcher: NSObject {
         bootstrapStart = nil
         if success {
             AppLog.info("bootstrap tamam: \(elapsed)")
+            // Cloudflare anahtarını widget'a bırakıyoruz: widget gündemi
+            // kendi çekiyor ama doğrulamayı burada geçiyoruz.
+            if let webView {
+                Task { await SessionBridge.publish(from: webView) }
+            }
         } else {
             AppLog.warn("bootstrap başarısız: \(elapsed)")
         }

@@ -2,8 +2,8 @@ import SwiftUI
 import WidgetKit
 import SukelaCore
 
-/// Gündem widget'ı: uygulamanın son çektiği başlıklar, sağlarında entry
-/// sayısı. Bir başlığa dokununca uygulama o başlığı açıyor.
+/// Gündem widget'ı. Başlıkları kendi çekiyor (bkz. WidgetFeed); sağlarında
+/// entry sayısı duruyor, dokununca uygulama o başlığı açıyor.
 @main
 struct GundemWidget: Widget {
     private let kind = "GundemWidget"
@@ -13,27 +13,31 @@ struct GundemWidget: Widget {
             GundemWidgetView(entry: entry)
         }
         .configurationDisplayName("gündem")
-        .description("Şükela Lite'ın son çektiği gündem başlıkları.")
+        .description("Ekşi gündemi: başlık ve entry sayısı.")
         .supportedFamilies([.systemSmall, .systemMedium, .systemLarge])
     }
 }
 
 struct GundemEntry: TimelineEntry {
     let date: Date
-    let snapshot: WidgetSnapshot?
+    let topics: [WidgetTopic]
+    let updatedAt: Date?
+    /// Ağdan mı geldi? Değilse saatin yanında bunu belli ediyoruz.
+    let isLive: Bool
 
     static let placeholder = GundemEntry(
         date: Date(timeIntervalSince1970: 1_756_000_000),
-        snapshot: WidgetSnapshot(
-            topics: [
-                WidgetTopic(title: "kendi ekşi istemcini yazmak", entryCount: "142", link: "/a--1"),
-                WidgetTopic(title: "sideloading", entryCount: "37", link: "/b--2"),
-                WidgetTopic(title: "swiftui", entryCount: "89", link: "/c--3"),
-                WidgetTopic(title: "7 günde bir uygulama yenilemek", entryCount: "64", link: "/d--4"),
-            ],
-            updatedAt: Date(timeIntervalSince1970: 1_756_000_000)
-        )
+        topics: [
+            WidgetTopic(title: "kendi ekşi istemcini yazmak", entryCount: "142", link: "/a--1"),
+            WidgetTopic(title: "sideloading", entryCount: "37", link: "/b--2"),
+            WidgetTopic(title: "swiftui", entryCount: "89", link: "/c--3"),
+            WidgetTopic(title: "7 günde bir uygulama yenilemek", entryCount: "64", link: "/d--4"),
+        ],
+        updatedAt: Date(timeIntervalSince1970: 1_756_000_000),
+        isLive: true
     )
+
+    static let empty = GundemEntry(date: Date(), topics: [], updatedAt: nil, isLive: false)
 }
 
 struct GundemProvider: TimelineProvider {
@@ -42,23 +46,29 @@ struct GundemProvider: TimelineProvider {
     }
 
     func getSnapshot(in context: Context, completion: @escaping (GundemEntry) -> Void) {
-        completion(context.isPreview ? .placeholder : current())
+        guard !context.isPreview else { return completion(.placeholder) }
+        Task { completion(await current()) }
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<GundemEntry>) -> Void) {
-        // Veriyi uygulama yazıyor; burada yalnızca dosyayı yeniden okuyoruz.
-        // Uygulama gündemi çektiğinde zaten yenileme isteği gönderiyor.
-        let next = Date().addingTimeInterval(30 * 60)
-        completion(Timeline(entries: [current()], policy: .after(next)))
+        Task {
+            let entry = await current()
+            // Taze veri varsa yarım saat sonra tekrar; yoksa daha erken dene,
+            // uygulama bu arada Cloudflare anahtarını tazelemiş olabilir.
+            let next = Date().addingTimeInterval(entry.isLive ? 30 * 60 : 10 * 60)
+            completion(Timeline(entries: [entry], policy: .after(next)))
+        }
     }
 
-    private func current() -> GundemEntry {
-        guard let container = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: WidgetStore.appGroup
-        ) else {
-            return GundemEntry(date: Date(), snapshot: nil)
-        }
-        return GundemEntry(date: Date(), snapshot: try? WidgetStore.read(from: container))
+    /// Gündemi widget kendi çekiyor; uygulamanın listesini okumuyoruz.
+    private func current() async -> GundemEntry {
+        guard let result = await WidgetFeed.load() else { return .empty }
+        return GundemEntry(
+            date: Date(),
+            topics: result.topics,
+            updatedAt: result.updatedAt,
+            isLive: result.isLive
+        )
     }
 }
 
@@ -78,7 +88,7 @@ struct GundemWidgetView: View {
     }
 
     private var topics: [WidgetTopic] {
-        Array((entry.snapshot?.topics ?? []).prefix(rowCount))
+        Array(entry.topics.prefix(rowCount))
     }
 
     var body: some View {
@@ -106,10 +116,10 @@ struct GundemWidgetView: View {
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(Palette.green)
             Spacer(minLength: 0)
-            if let updatedAt = entry.snapshot?.updatedAt {
+            if let updatedAt = entry.updatedAt {
                 Text(updatedAt, style: .time)
                     .font(.caption2)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(entry.isLive ? .secondary : Color.orange)
             }
         }
         .padding(.bottom, 6)
@@ -117,9 +127,9 @@ struct GundemWidgetView: View {
 
     private var empty: some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text("gündem yok")
+            Text("gündem alınamadı")
                 .font(.caption.weight(.semibold))
-            Text("uygulamayı bir kez açınca başlıklar buraya düşüyor.")
+            Text("ekşi doğrulama istiyor; uygulama açılınca anahtar tazeleniyor.")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }

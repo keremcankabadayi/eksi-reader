@@ -72,3 +72,48 @@ final class DeepLinkTests: XCTestCase {
         XCTAssertEqual(DeepLink.parse(url), .topic(link: "/baslik--1", title: ""))
     }
 }
+
+final class SessionSnapshotTests: XCTestCase {
+    private func snapshot(expiring: Date?) -> SessionSnapshot {
+        SessionSnapshot(
+            userAgent: "Mozilla/5.0 (iPhone)",
+            cookies: [
+                SessionCookie(
+                    name: "cf_clearance", value: "abc",
+                    domain: ".eksisozluk.com", path: "/", expiresAt: expiring
+                ),
+                SessionCookie(
+                    name: "a", value: "1",
+                    domain: ".eksisozluk.com", path: "/", expiresAt: nil
+                ),
+            ],
+            updatedAt: Date(timeIntervalSince1970: 0)
+        )
+    }
+
+    func testCookieHeaderJoinsPairs() {
+        XCTAssertEqual(snapshot(expiring: nil).cookieHeader(), "cf_clearance=abc; a=1")
+    }
+
+    /// Süresi geçmiş çerezi göndermenin anlamı yok; Cloudflare zaten reddediyor.
+    func testCookieHeaderDropsExpired() {
+        let past = Date(timeIntervalSince1970: 1_000)
+        let header = snapshot(expiring: past).cookieHeader(at: Date(timeIntervalSince1970: 2_000))
+        XCTAssertEqual(header, "a=1")
+    }
+
+    func testDetectsClearanceCookie() {
+        XCTAssertTrue(snapshot(expiring: nil).hasClearance)
+    }
+
+    func testRoundTripThroughFile() throws {
+        let container = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: container, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: container) }
+
+        let written = snapshot(expiring: Date(timeIntervalSince1970: 9_999_999))
+        try SessionStore.write(written, to: container)
+        XCTAssertEqual(try SessionStore.read(from: container), written)
+    }
+}
