@@ -46,12 +46,17 @@ jobs:
       - name: Surum bilgisini hesapla
         id: meta
         run: |
-          VERSION="$(tr -d '[:space:]' < VERSION)"
+          BASE="$(tr -d '[:space:]' < VERSION)"
           BUILD="${{ github.run_number }}"
+          # SideStore guncellemeyi kaynaktaki `version` alanina bakarak
+          # buluyor; `buildVersion` tek basina tetiklemiyor, o yuzden her
+          # build ayni "1.0.0" gorunup update cikmiyordu. Yama numarasini
+          # build numarasina esitliyoruz: 1.0.0 + build 15 -> 1.0.15.
+          VERSION="${BASE%.*}.${BUILD}"
           {
             echo "version=$VERSION"
             echo "build=$BUILD"
-            echo "tag=v${VERSION}-${BUILD}"
+            echo "tag=v${VERSION}"
             echo "date=$(date -u +%Y-%m-%d)"
           } >> "$GITHUB_OUTPUT"
 

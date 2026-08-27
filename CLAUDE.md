@@ -15,6 +15,11 @@ Reklamsız, kişisel Ekşi Sözlük okuyucusu. Yayınlanmayacak, App Store'a git
 - **`docs/source.json` bu repoda takip edilmiyor.** Sürüm geçmişi dist reposunda
   yaşıyor; CI her koşuda dist'i klonlayıp geçmişi oradan alıyor, üstüne yeni sürümü
   ekleyip geri yazıyor. Bu repoda tuttuğumuz kopya bayatlar, o yüzden `.gitignore`'da.
+- **Her build'in `version`'ı farklı.** SideStore güncellemeyi kaynaktaki
+  `version` alanına bakarak buluyor; `buildVersion` tek başına tetiklemiyor.
+  CI yama numarasını build numarasına eşitliyor (`VERSION` dosyası `1.0.0`,
+  build 15 → `1.0.15`, tag `v1.0.15`). `VERSION` dosyasında major.minor'ı
+  değiştir, yama hanesine dokunma.
 - **Bundle ID sabit: `com.kerem.sukelalite`.** Apple haftada 10 yeni App ID'ye izin
   veriyor; aynı bundle ID'yi yeniden kurmak kotadan yemiyor. Değiştirme.
 - **Deployment target iOS 16.0.** `NavigationStack` bunu gerektiriyor. Düşürmek
