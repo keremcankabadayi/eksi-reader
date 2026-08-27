@@ -77,6 +77,10 @@ struct TopicDetailView: View {
                 }
             }
             .listStyle(.plain)
+            // Liste kendi zeminini çiziyor; palet zemini görünsün diye kapatıp
+            // altına kendi rengimizi koyuyoruz.
+            .scrollContentBackground(.hidden)
+            .background(Palette.base)
             // Sayfalama barı sekme çubuğunun yerini alıyor: başlık açıkken
             // gündem/debe/ayarlar gizleniyor, aynı yerde sayfalama duruyor.
             .safeAreaInset(edge: .bottom, spacing: 0) {

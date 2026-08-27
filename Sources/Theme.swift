@@ -1,29 +1,48 @@
 import SwiftUI
 import UIKit
 
-/// Renkler Şükela Reader'ın (App Store) ekran görüntülerinden alındı:
-/// yeşil kimlik rengi, turuncu bağlantılar.
+/// Renkler.
+///
+/// Açık tema Şükela Reader'ın (App Store) ekran görüntülerinden: yeşil
+/// kimlik rengi, turuncu bağlantılar. Koyu tema sıcak ve düşük kontrastlı:
+/// kömür zemin, kırık beyaz metin, amber bağlantı, adaçayı nick.
 enum Palette {
-    /// Üst bar, yazar nick'i, entry sayısı.
-    static let green = Color(red: 0x3D / 255, green: 0xBE / 255, blue: 0x8B / 255)
-    /// bkz ve linkler. Yeşille karışmasın diye ayrı renk.
-    static let orange = Color(red: 0xE8 / 255, green: 0xA3 / 255, blue: 0x3D / 255)
+    /// Kimlik yeşili. Açık temadaki üst bar bunun dolusu.
+    static let brand = Color(uiColor: ui(0x3D_BE_8B))
 
-    /// Zebra satırların zemini. Açık temada yeşile çalan çok hafif gri,
-    /// koyu temada hafif beyaz. `Color.primary.opacity` yerine sabit renk:
-    /// açık temada gri, satırı kirletmeden ayırıyor.
-    static let zebra = Color(uiColor: UIColor { trait in
-        trait.userInterfaceStyle == .dark
-            ? UIColor(white: 1, alpha: 0.06)
-            : UIColor(red: 0xEC / 255, green: 0xF3 / 255, blue: 0xEF / 255, alpha: 1)
-    })
+    /// Zemin. Koyuda #1E1E1E.
+    static let base = adaptive(light: .systemBackground, dark: ui(0x1E_1E_1E))
+    /// Kart / zebra satırı. Koyuda zeminden bir tık açık: #252525.
+    static let surface = adaptive(light: ui(0xEC_F3_EF), dark: ui(0x25_25_25))
 
-    /// Zebranın diğer yarısı: normal zemin.
-    static let base = Color(uiColor: .systemBackground)
+    /// Gövde metni. Koyuda saf beyaz değil, göz yormayan #D1D1D1.
+    static let text = adaptive(light: .label, dark: ui(0xD1_D1_D1))
+    /// Tarih ve diğer meta bilgi.
+    static let meta = adaptive(light: .secondaryLabel, dark: ui(0x7A_7A_7A))
+    /// bkz, linkler, entry sayısı. Koyuda amber, açıkta turuncu.
+    static let link = adaptive(light: ui(0xE8_A3_3D), dark: ui(0xCC_A0_46))
+    /// Yazar nick'i. Koyuda adaçayı yeşili.
+    static let nick = adaptive(light: ui(0x3D_BE_8B), dark: ui(0x66_99_66))
 
     /// Satır sırasına göre zemin. Liste ve widget aynı kuralı kullanıyor.
     static func row(isEven: Bool) -> Color {
-        isEven ? base : zebra
+        isEven ? base : surface
+    }
+
+    /// 0xRRGGBB.
+    private static func ui(_ value: UInt32) -> UIColor {
+        UIColor(
+            red: CGFloat((value >> 16) & 0xFF) / 255,
+            green: CGFloat((value >> 8) & 0xFF) / 255,
+            blue: CGFloat(value & 0xFF) / 255,
+            alpha: 1
+        )
+    }
+
+    private static func adaptive(light: UIColor, dark: UIColor) -> Color {
+        Color(uiColor: UIColor { trait in
+            trait.userInterfaceStyle == .dark ? dark : light
+        })
     }
 }
 
@@ -106,7 +125,7 @@ private struct EksiNavigationBar: ViewModifier {
     func body(content: Content) -> some View {
         content
             .toolbarBackground(
-                colorScheme == .dark ? Color.black : Palette.green,
+                colorScheme == .dark ? Palette.surface : Palette.brand,
                 for: .navigationBar
             )
             .toolbarBackground(.visible, for: .navigationBar)

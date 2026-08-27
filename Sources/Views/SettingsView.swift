@@ -46,6 +46,8 @@ struct SettingsView: View {
                 LabeledContent("app group", value: AppGroupContainer.identifier ?? "yok")
             }
         }
+        .scrollContentBackground(.hidden)
+        .background(Palette.base)
         .navigationTitle("ayarlar")
     }
 

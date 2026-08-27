@@ -34,6 +34,10 @@ struct TopicListView: View {
             }
         }
         .listStyle(.plain)
+        // Liste kendi zeminini çiziyor; palet zemini görünsün diye kapatıp
+        // altına kendi rengimizi koyuyoruz.
+        .scrollContentBackground(.hidden)
+        .background(Palette.base)
         .eksiNavigationBar()
         .navigationTitle(feed.title)
         // Sabit ve ortalı başlık: kaydırınca küçülüp kaybolmuyor.

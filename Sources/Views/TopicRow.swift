@@ -15,6 +15,7 @@ struct TopicRow: View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text(topic.title)
                 .font(.system(size: fontSize))
+                .foregroundStyle(Palette.text)
                 .lineLimit(2)
 
             Spacer(minLength: 0)
@@ -24,7 +25,7 @@ struct TopicRow: View {
                 Text(topic.entryCount)
                     .font(.system(size: fontSize))
                     .monospacedDigit()
-                    .foregroundStyle(Color.accentColor)
+                    .foregroundStyle(Palette.link)
             }
         }
         .padding(.vertical, 2)

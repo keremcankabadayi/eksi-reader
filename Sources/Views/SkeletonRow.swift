@@ -35,7 +35,7 @@ struct SkeletonRow: View {
 
     private var block: some View {
         RoundedRectangle(cornerRadius: 4, style: .continuous)
-            .fill(Color.secondary.opacity(0.25))
+            .fill(Palette.meta.opacity(0.35))
     }
 }
 

@@ -36,9 +36,9 @@ struct EntryRow: View {
 
             VStack(alignment: .trailing, spacing: 2) {
                 Text(entry.date)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Palette.meta)
                 Text(entry.author.nick)
-                    .foregroundStyle(Palette.green)
+                    .foregroundStyle(Palette.nick)
             }
             .font(.caption)
             .multilineTextAlignment(.trailing)
@@ -54,7 +54,7 @@ struct EntryRow: View {
             if entry.favoriteCount > 0 {
                 Label("\(entry.favoriteCount)", systemImage: "heart")
                     .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(Palette.meta)
             }
 
             Menu {
@@ -84,9 +84,9 @@ struct EntryRow: View {
             // Oy vermek Ekşi'de giriş istiyor, bu uygulamada giriş yok.
             // Düzen bozulmasın diye oklar duruyor ama pasif.
             Image(systemName: "arrow.up")
-                .foregroundStyle(Palette.orange.opacity(0.3))
+                .foregroundStyle(Palette.link.opacity(0.3))
             Image(systemName: "arrow.down")
-                .foregroundStyle(Palette.orange.opacity(0.3))
+                .foregroundStyle(Palette.link.opacity(0.3))
 
             if let permalink {
                 ShareLink(item: permalink) {
@@ -95,7 +95,7 @@ struct EntryRow: View {
             }
         }
         .font(.system(size: 15))
-        .foregroundStyle(Palette.orange)
+        .foregroundStyle(Palette.link)
         .buttonStyle(.plain)
     }
 }

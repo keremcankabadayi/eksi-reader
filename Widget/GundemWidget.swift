@@ -115,7 +115,7 @@ struct GundemWidgetView: View {
         HStack {
             Text("gündem")
                 .font(.caption.weight(.semibold))
-                .foregroundStyle(Palette.green)
+                .foregroundStyle(Palette.nick)
             Spacer(minLength: 0)
             if let updatedAt = entry.updatedAt {
                 Text(updatedAt, style: .time)
@@ -150,7 +150,7 @@ struct GundemWidgetView: View {
                 Text(topic.entryCount)
                     .font(.caption)
                     .monospacedDigit()
-                    .foregroundStyle(Palette.green)
+                    .foregroundStyle(Palette.link)
             }
         }
         .padding(.vertical, 3)

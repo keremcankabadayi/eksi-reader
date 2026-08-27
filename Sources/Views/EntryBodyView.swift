@@ -26,7 +26,7 @@ struct RenderedEntry: Identifiable {
             var piece = AttributedString(segment.text)
             if let url = segment.link?.url {
                 piece.link = url
-                piece.foregroundColor = Palette.orange
+                piece.foregroundColor = Palette.link
                 labels[url] = segment.text
                     .replacingOccurrences(of: EntryContent.externalMarker, with: "")
                     .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -53,6 +53,7 @@ struct EntryBodyView: View {
     var body: some View {
         Text(rendered.body)
             .font(.system(size: fontSize))
+            .foregroundStyle(Palette.text)
             .frame(maxWidth: .infinity, alignment: .leading)
             // textSelection yerine uzun basınca kopyalama: seçim katmanı uzun
             // metinlerde her ölçümde çalışıp kaydırmayı takıyordu.
