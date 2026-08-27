@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import SukelaCore
 
 /// Bir entry'nin çizime hazır hali.
@@ -10,6 +11,8 @@ struct RenderedEntry: Identifiable {
     let id: String
     let entry: Entry
     let body: AttributedString
+    /// Kopyalama için düz metin.
+    let plain: String
     /// Bağlantı URL'sinden gövdedeki metnine; açılan başlığa ad vermek için.
     let labels: [URL: String]
 
@@ -31,6 +34,7 @@ struct RenderedEntry: Identifiable {
             body.append(piece)
         }
         self.body = body
+        self.plain = String(body.characters)
         self.labels = labels
     }
 }
@@ -49,8 +53,16 @@ struct EntryBodyView: View {
     var body: some View {
         Text(rendered.body)
             .font(.system(size: fontSize))
-            .textSelection(.enabled)
             .frame(maxWidth: .infinity, alignment: .leading)
+            // textSelection yerine uzun basınca kopyalama: seçim katmanı uzun
+            // metinlerde her ölçümde çalışıp kaydırmayı takıyordu.
+            .contextMenu {
+                Button {
+                    UIPasteboard.general.string = rendered.plain
+                } label: {
+                    Label("kopyala", systemImage: "doc.on.doc")
+                }
+            }
             .environment(\.openURL, OpenURLAction { url in
                 // Site içi bağlantılar uygulamada açılıyor; profil ve harici
                 // bağlantılar sisteme bırakılıyor.

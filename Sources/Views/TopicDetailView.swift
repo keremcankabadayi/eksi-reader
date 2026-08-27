@@ -32,37 +32,43 @@ struct TopicDetailView: View {
 
     var body: some View {
         ScrollViewReader { proxy in
-            ScrollView {
+            // LazyVStack değil List: LazyVStack yukarı kaydırırken görünmeyen
+            // satırları atıp geri gelince yeniden ölçüyor, uzun entry'lerde
+            // takılma buradan geliyordu. List hücreleri geri dönüştürüyor ve
+            // ölçtüğü yüksekliği saklıyor.
+            List {
                 switch phase {
-                case .loading where pages.isEmpty:
-                    ProgressView().padding(.vertical, 48)
-                case let .failed(failure) where pages.isEmpty:
+                case .loading where rows.isEmpty:
+                    LoadingRow()
+                case let .failed(failure) where rows.isEmpty:
                     ErrorView(failure: failure) { await load() }
-                        .padding(.horizontal)
+                        .listRowSeparator(.hidden)
                 default:
-                    LazyVStack(alignment: .leading, spacing: 24) {
-                        // Sayfa değişince buraya kaydırıyoruz.
-                        Color.clear.frame(height: 0).id(Self.topAnchor)
+                    // Sayfa değişince buraya kaydırıyoruz.
+                    Color.clear
+                        .frame(height: 0)
+                        .id(Self.topAnchor)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets())
 
-                        if let preceding = pages.first?.precedingEntryCount, preceding > 0 {
-                            PreviousEntriesButton(
-                                count: preceding,
-                                loading: loadingPrevious,
-                                failure: previousFailure
-                            ) {
-                                await loadPrevious(anchoring: proxy)
-                            }
+                    if let preceding = pages.first?.precedingEntryCount, preceding > 0 {
+                        PreviousEntriesButton(
+                            count: preceding,
+                            loading: loadingPrevious,
+                            failure: previousFailure
+                        ) {
+                            await loadPrevious(anchoring: proxy)
                         }
-
-                        ForEach(rows) { row in
-                            EntryRow(rendered: row, fontSize: fontSize, openInApp: open(link:title:))
-                                .id(row.id)
-                        }
-
+                        .listRowSeparator(.hidden)
                     }
-                    .padding()
+
+                    ForEach(rows) { row in
+                        EntryRow(rendered: row, fontSize: fontSize, openInApp: open(link:title:))
+                            .id(row.id)
+                    }
                 }
             }
+            .listStyle(.plain)
             // Sayfalama barı sekme çubuğunun yerini alıyor: başlık açıkken
             // gündem/debe/ayarlar gizleniyor, aynı yerde sayfalama duruyor.
             .safeAreaInset(edge: .bottom, spacing: 0) {
@@ -305,9 +311,9 @@ private struct EntryRow: View {
                     .foregroundStyle(Palette.green)
             }
             .font(.caption)
-
-            Divider()
         }
+        // Ayırıcıyı List çiziyor, kendi Divider'ımıza gerek yok.
+        .padding(.vertical, 6)
     }
 }
 
