@@ -22,6 +22,12 @@ struct TopicDetailView: View {
 
     private var entries: [Entry] { pages.flatMap(\.entries) }
 
+    /// Sayfalama gerektiren başlıkta son yüklenen sayfa; tek sayfalıkta nil.
+    private var pager: TopicPage? {
+        guard let last = pages.last, last.pageCount > 1 else { return nil }
+        return last
+    }
+
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
@@ -55,13 +61,13 @@ struct TopicDetailView: View {
                     .padding()
                 }
             }
-            // Sayfalama barı Şükela Reader'daki gibi ekranın altına sabit;
-            // listenin sonuna kadar kaydırmadan sayfa değiştirilebiliyor.
-            .safeAreaInset(edge: .bottom) {
-                if let last = pages.last, last.pageCount > 1 {
+            // Sayfalama barı sekme çubuğunun yerini alıyor: başlık açıkken
+            // gündem/debe/ayarlar gizleniyor, aynı yerde sayfalama duruyor.
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                if let pager {
                     PagerBar(
-                        current: last.currentPage,
-                        total: last.pageCount,
+                        current: pager.currentPage,
+                        total: pager.pageCount,
                         loading: navigating,
                         failure: pagingFailure
                     ) { page in
@@ -69,10 +75,12 @@ struct TopicDetailView: View {
                     }
                     .padding(.horizontal)
                     .padding(.vertical, 6)
-                    .background(.bar)
+                    // Zemin ana ekran çubuğunun altına kadar insin.
+                    .background(.bar, ignoresSafeAreaEdges: .bottom)
                 }
             }
         }
+        .toolbar(pager == nil ? .visible : .hidden, for: .tabBar)
         .navigationTitle(pages.first?.title ?? topic.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
