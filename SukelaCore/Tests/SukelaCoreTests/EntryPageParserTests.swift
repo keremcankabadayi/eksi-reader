@@ -68,7 +68,29 @@ final class EntryPageParserTests: XCTestCase {
         let page = try EntryPageParser.parse(html: html)
         XCTAssertEqual(page.currentPage, 22)
         XCTAssertEqual(page.pageCount, 30)
-        XCTAssertEqual(page.precedingEntryCount, 210)
+    }
+
+    /// Ekşi "N entry daha" bağlantılarını kendisi koyuyor: listeden önceki
+    /// öncekileri, sonraki sonrakileri açıyor. Sayıyı biz hesaplamıyoruz.
+    func testParsesMoreLinks() throws {
+        let page = try page()
+        XCTAssertEqual(page.previousMore?.label, "10 entry daha")
+        XCTAssertEqual(
+            page.previousMore?.link,
+            "/kendi-eksi-istemcini-yazmak--123456?focusto=98700"
+        )
+        XCTAssertEqual(page.nextMore?.label, "330 entry daha")
+        XCTAssertEqual(
+            page.nextMore?.link,
+            "/kendi-eksi-istemcini-yazmak--123456?focusto=99000"
+        )
+    }
+
+    func testNoMoreLinksWhenAbsent() throws {
+        let html = "<html><body><h1 id=\"title\"></h1><ul id=\"entry-item-list\"></ul></body></html>"
+        let page = try EntryPageParser.parse(html: html)
+        XCTAssertNil(page.previousMore)
+        XCTAssertNil(page.nextMore)
     }
 
     func testMissingPagerDefaultsToSinglePage() throws {

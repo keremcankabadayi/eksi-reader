@@ -63,20 +63,11 @@ public struct TopicPage: Hashable, Sendable {
     public let currentPage: Int
     public let pageCount: Int
 
-    /// Ekşi bir sayfada en fazla 10 entry gösteriyor. Sunucu bu sayıyı
-    /// söylemiyor; sayfa numarasından entry sayısına geçebilmek için burada.
-    public static let entriesPerPage = 10
-
-    /// Bu sayfadan önce kaç entry var. Başlık ortadan açıldığında üstteki
-    /// "N entry daha" satırında gösterilen sayı.
-    public var precedingEntryCount: Int {
-        max(currentPage - 1, 0) * Self.entriesPerPage
-    }
-
-    /// Yüklenecek bir önceki sayfa; ilk sayfadaysak nil.
-    public var previousPage: Int? {
-        currentPage > 1 ? currentPage - 1 : nil
-    }
+    /// Sayfanın üstündeki "N entry daha" bağlantısı; başlık ortadan
+    /// açıldığında Ekşi bunu kendisi koyuyor.
+    public let previousMore: MoreLink?
+    /// Sayfanın altındaki "N entry daha" bağlantısı.
+    public let nextMore: MoreLink?
 
     public init(
         title: String,
@@ -84,7 +75,9 @@ public struct TopicPage: Hashable, Sendable {
         topicId: String,
         entries: [Entry],
         currentPage: Int,
-        pageCount: Int
+        pageCount: Int,
+        previousMore: MoreLink? = nil,
+        nextMore: MoreLink? = nil
     ) {
         self.title = title
         self.slug = slug
@@ -92,5 +85,24 @@ public struct TopicPage: Hashable, Sendable {
         self.entries = entries
         self.currentPage = currentPage
         self.pageCount = pageCount
+        self.previousMore = previousMore
+        self.nextMore = nextMore
+    }
+}
+
+/// Ekşi'nin "şu kadar entry daha var" bağlantısı.
+///
+/// Sayıyı biz hesaplamıyoruz: sayfa başına entry sayısı sabit değil ve
+/// başlık `focusto` ile ortadan açıldığında tahmin tutmuyor. Ekşi ne
+/// yazıyorsa onu gösteriyoruz.
+public struct MoreLink: Hashable, Sendable {
+    /// Bağlantının kendi metni, örneğin "10 entry daha".
+    public let label: String
+    /// Göreli yol, örneğin "/baslik--123?focusto=185898249".
+    public let link: String
+
+    public init(label: String, link: String) {
+        self.label = label
+        self.link = link
     }
 }

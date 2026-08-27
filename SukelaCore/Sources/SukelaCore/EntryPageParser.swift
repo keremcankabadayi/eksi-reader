@@ -20,6 +20,7 @@ public enum EntryPageParser {
 
         let entries = try parseEntries(in: document)
         let (currentPage, pageCount) = try parsePagination(in: document)
+        let (previousMore, nextMore) = try parseMoreLinks(in: document)
 
         return TopicPage(
             title: title,
@@ -27,8 +28,62 @@ public enum EntryPageParser {
             topicId: topicId,
             entries: entries,
             currentPage: currentPage,
-            pageCount: pageCount
+            pageCount: pageCount,
+            previousMore: previousMore,
+            nextMore: nextMore
         )
+    }
+
+    /// Ekşi entry listesinin üstüne ve altına "N entry daha" bağlantısı
+    /// koyuyor. Listeden önce gelen öncekileri, sonra gelen sonrakileri
+    /// açıyor. Sayıyı biz hesaplamıyoruz; metni olduğu gibi taşıyoruz.
+    private static func parseMoreLinks(in document: Document) throws -> (MoreLink?, MoreLink?) {
+        let anchors = try document.select("a.showall, a.more-data").array()
+        guard !anchors.isEmpty else { return (nil, nil) }
+
+        var listElement: Element?
+        for selector in entryListSelectors.map({ $0.components(separatedBy: " > ").first ?? $0 }) {
+            listElement = try document.select(selector).first()
+            if listElement != nil { break }
+        }
+
+        var previous: MoreLink?
+        var next: MoreLink?
+
+        for anchor in anchors {
+            let label = try anchor.text().trimmed()
+            let link = try anchor.attr("href").trimmed()
+            guard !label.isEmpty, !link.isEmpty else { continue }
+            let more = MoreLink(label: label, link: link)
+
+            if isBefore(anchor, listElement) {
+                previous = previous ?? more
+            } else {
+                next = next ?? more
+            }
+        }
+
+        return (previous, next)
+    }
+
+    /// Bağlantı entry listesinden önce mi geliyor? Aynı kapsayıcıda
+    /// duruyorlar, sıralarına bakmak yetiyor. Liste bulunamazsa bağlantıyı
+    /// "sonraki" sayıyoruz: yanlışlıkla başa eklemek listeyi bozar.
+    private static func isBefore(_ anchor: Element, _ list: Element?) -> Bool {
+        guard let list else { return false }
+        guard anchor.parent() === list.parent() else {
+            // Farklı kapsayıcı: belge sırasına bakmak için ortak atadan yürümek
+            // gerekir; onun yerine listeden önceki kardeşleri tarıyoruz.
+            var sibling = try? list.previousElementSibling()
+            while let current = sibling {
+                if current === anchor || (try? current.select("a.showall, a.more-data").first()) === anchor {
+                    return true
+                }
+                sibling = try? current.previousElementSibling()
+            }
+            return false
+        }
+        return anchor.siblingIndex < list.siblingIndex
     }
 
     /// Dardan genişe; ilk sonuç veren desende duruyoruz.

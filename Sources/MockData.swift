@@ -23,7 +23,10 @@ struct MockFeedProvider: FeedProviding {
             topicId: "1",
             entries: Self.entries(page: current),
             currentPage: current,
-            pageCount: 30
+            pageCount: 30,
+            previousMore: current > 1
+                ? MoreLink(label: "10 entry daha", link: "/ornek--1?focusto=42")
+                : nil
         )
     }
 

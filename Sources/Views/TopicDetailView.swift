@@ -47,13 +47,15 @@ struct TopicDetailView: View {
                     // Çapa için ayrı bir satır koymuyoruz: List sıfır
                     // yükseklikli satıra da minimum yükseklik verip üstte
                     // boşluk bırakıyor. Listenin ilk satırı neyse o çapa.
-                    if let preceding = pages.first?.precedingEntryCount, preceding > 0 {
+                    if let more = pages.first?.previousMore {
+                        // Metin ve bağlantı Ekşi'den geliyor; sayıyı biz
+                        // hesaplamıyoruz, sayfa başına entry sabit değil.
                         PreviousEntriesButton(
-                            count: preceding,
+                            label: more.label,
                             loading: loadingPrevious,
                             failure: previousFailure
                         ) {
-                            await loadPrevious(anchoring: proxy)
+                            await loadPrevious(more, anchoring: proxy)
                         }
                         .id(Self.topAnchor)
                         .listRowSeparator(.hidden)
@@ -169,7 +171,7 @@ struct TopicDetailView: View {
             pages = [try await provider.topicPage(link: topic.link, page: page)]
             rows = Self.render(pages)
             // "N entry daha" satırı varsa çapa odur, yoksa ilk entry.
-            let target: AnyHashable? = (pages.first?.precedingEntryCount ?? 0) > 0
+            let target: AnyHashable? = pages.first?.previousMore != nil
                 ? Self.topAnchor
                 : rows.first?.id
             if let target { proxy.scrollTo(target, anchor: .top) }
@@ -179,8 +181,10 @@ struct TopicDetailView: View {
         }
     }
 
-    private func loadPrevious(anchoring proxy: ScrollViewProxy) async {
-        guard !loadingPrevious, let target = pages.first?.previousPage else { return }
+    /// Ekşi'nin verdiği "N entry daha" bağlantısını yükleyip başa ekliyor.
+    /// Bağlantı focusto taşıyor, sayfa numarası vermiyoruz ki korunsun.
+    private func loadPrevious(_ more: MoreLink, anchoring proxy: ScrollViewProxy) async {
+        guard !loadingPrevious else { return }
         loadingPrevious = true
         previousFailure = nil
         defer { loadingPrevious = false }
@@ -189,7 +193,7 @@ struct TopicDetailView: View {
         // işaretleyip ekledikten sonra oraya geri sabitliyoruz.
         let anchorID = rows.first?.id
         do {
-            let previous = try await provider.topicPage(link: topic.link, page: target)
+            let previous = try await provider.topicPage(link: more.link, page: nil)
             pages.insert(previous, at: 0)
             rows.insert(contentsOf: previous.entries.map(RenderedEntry.init), at: 0)
             if let anchorID {
@@ -203,7 +207,7 @@ struct TopicDetailView: View {
 
 /// Başlığın üstünde kalan eski entry'leri yükleyen satır.
 private struct PreviousEntriesButton: View {
-    let count: Int
+    let label: String
     let loading: Bool
     let failure: String?
     let load: () async -> Void
@@ -219,7 +223,7 @@ private struct PreviousEntriesButton: View {
                     } else {
                         Image(systemName: "chevron.up")
                     }
-                    Text("\(count) entry daha")
+                    Text(label)
                 }
                 .font(.callout)
                 .frame(maxWidth: .infinity)
