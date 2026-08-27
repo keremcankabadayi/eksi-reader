@@ -1,7 +1,4 @@
 import Foundation
-#if canImport(Security)
-import Security
-#endif
 import SukelaCore
 
 /// Uygulama ile widget'ın buluştuğu klasör.
@@ -35,22 +32,33 @@ enum AppGroupContainer {
         return ([WidgetStore.appGroup] + granted()).filter { seen.insert($0).inserted }
     }
 
-    /// Binary'nin entitlement'ındaki `application-groups` listesi.
+    /// İmzanın gerçekten verdiği gruplar.
+    ///
+    /// `SecTaskCopyValueForEntitlement` iOS'ta yok (macOS API'si), o yüzden
+    /// entitlement'ı imzalanırken pakete konan `embedded.mobileprovision`'dan
+    /// okuyoruz: CMS zarfının içinde düz XML plist duruyor.
     private static func granted() -> [String] {
-        #if canImport(Security)
-        guard let task = SecTaskCreateFromSelf(nil),
-              let value = SecTaskCopyValueForEntitlement(
-                  task,
-                  "com.apple.security.application-groups" as CFString,
-                  nil
+        guard let url = Bundle.main.url(
+                  forResource: "embedded",
+                  withExtension: "mobileprovision"
               ),
-              let groups = value as? [String] else { return [] }
+              let data = try? Data(contentsOf: url),
+              let start = data.range(of: Data("<?xml".utf8)),
+              let end = data.range(of: Data("</plist>".utf8)) else { return [] }
+
+        let object = try? PropertyListSerialization.propertyList(
+            from: data[start.lowerBound..<end.upperBound],
+            format: nil
+        )
+
+        guard let profile = object as? [String: Any],
+              let entitlements = profile["Entitlements"] as? [String: Any],
+              let groups = entitlements["com.apple.security.application-groups"] as? [String]
+        else { return [] }
+
         // Bizimkine benzeyen varsa o öne geçsin; başka uygulamanın grubuna
         // yazmanın anlamı yok.
         let ours = groups.filter { $0.contains("sukelalite") }
         return ours.isEmpty ? groups : ours
-        #else
-        return []
-        #endif
     }
 }
