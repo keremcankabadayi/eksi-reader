@@ -25,7 +25,7 @@ struct TopicRow: View {
                 Text(topic.entryCount)
                     .font(.system(size: fontSize))
                     .monospacedDigit()
-                    .foregroundStyle(Palette.link)
+                    .foregroundStyle(Palette.sage)
             }
         }
         .padding(.vertical, 2)

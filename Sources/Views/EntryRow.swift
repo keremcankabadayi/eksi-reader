@@ -16,7 +16,7 @@ struct EntryRow: View {
     }
 
     var body: some View {
-        VStack(alignment: .trailing, spacing: 10) {
+        VStack(alignment: .trailing, spacing: 6) {
             EntryBodyView(
                 rendered: rendered,
                 fontSize: fontSize,
@@ -27,20 +27,21 @@ struct EntryRow: View {
 
             actions
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 4)
     }
 
     private var signature: some View {
-        HStack(alignment: .center, spacing: 10) {
+        HStack(alignment: .center, spacing: 8) {
             Spacer(minLength: 0)
 
-            VStack(alignment: .trailing, spacing: 2) {
+            // Tarih ve nick sıkışık duruyor: entry gövdesi ile alttaki
+            // ikon sırası arasında ince bir şerit kalsın.
+            VStack(alignment: .trailing, spacing: 0) {
                 Text(entry.date)
-                    .foregroundStyle(Palette.meta)
                 Text(entry.author.nick)
-                    .foregroundStyle(Palette.nick)
             }
-            .font(.caption)
+            .font(.caption2)
+            .foregroundStyle(Palette.sage)
             .multilineTextAlignment(.trailing)
 
             AvatarView(url: entry.author.avatarURL)
@@ -52,9 +53,14 @@ struct EntryRow: View {
             Spacer(minLength: 0)
 
             if entry.favoriteCount > 0 {
-                Label("\(entry.favoriteCount)", systemImage: "heart")
-                    .font(.caption)
-                    .foregroundStyle(Palette.meta)
+                // Label kalp ile sayı arasına geniş bir boşluk koyuyor;
+                // ikiliyi kendimiz diziyoruz.
+                HStack(spacing: 3) {
+                    Image(systemName: "heart")
+                    Text("\(entry.favoriteCount)")
+                }
+                .font(.caption)
+                .foregroundStyle(Palette.meta)
             }
 
             Menu {
@@ -104,7 +110,7 @@ struct EntryRow: View {
 private struct AvatarView: View {
     let url: String?
 
-    private static let size: CGFloat = 32
+    private static let size: CGFloat = 26
 
     var body: some View {
         Group {

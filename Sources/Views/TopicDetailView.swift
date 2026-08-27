@@ -94,7 +94,7 @@ struct TopicDetailView: View {
                         await go(to: page, anchoring: proxy)
                     }
                     .padding(.horizontal)
-                    .padding(.vertical, 6)
+                    .padding(.vertical, 2)
                     // Zemin ana ekran çubuğunun altına kadar insin.
                     .background(.bar, ignoresSafeAreaEdges: .bottom)
                 }
@@ -259,18 +259,19 @@ private struct PagerBar: View {
     let go: (Int) async -> Void
 
     var body: some View {
-        VStack(spacing: 6) {
-            HStack(spacing: 20) {
+        VStack(spacing: 4) {
+            HStack(spacing: 18) {
                 step("chevron.backward.to.line", to: 1, enabled: current > 1)
                 step("chevron.backward", to: current - 1, enabled: current > 1)
 
                 if loading {
-                    BrandLoader(width: 16)
+                    BrandLoader(width: 16, tint: Palette.sage)
                         .frame(minWidth: 44)
                 } else {
                     Text("\(current)/\(total)")
-                        .font(.callout)
+                        .font(.footnote)
                         .monospacedDigit()
+                        .foregroundStyle(Palette.sage)
                         .frame(minWidth: 44)
                 }
 
@@ -285,7 +286,7 @@ private struct PagerBar: View {
                     .foregroundStyle(.secondary)
             }
         }
-        .padding(.top, 8)
+        .padding(.top, 2)
     }
 
     private func step(_ symbol: String, to page: Int, enabled: Bool) -> some View {
@@ -293,10 +294,12 @@ private struct PagerBar: View {
             Task { await go(page) }
         } label: {
             Image(systemName: symbol)
-                .font(.body)
-                .frame(width: 32, height: 32)
+                .font(.footnote.weight(.semibold))
+                .frame(width: 30, height: 24)
         }
-        .buttonStyle(.bordered)
+        // Çerçeveli düğme barı kalınlaştırıyordu; düz ikon yeterli.
+        .buttonStyle(.plain)
+        .foregroundStyle(Palette.sage.opacity(enabled && !loading ? 1 : 0.3))
         .disabled(!enabled || loading)
     }
 }
