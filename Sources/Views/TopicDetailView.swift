@@ -228,7 +228,7 @@ private struct PreviousEntriesButton: View {
             } label: {
                 HStack(spacing: 6) {
                     if loading {
-                        ProgressView()
+                        BrandLoader(width: 14)
                     } else {
                         Image(systemName: "chevron.up")
                     }
@@ -265,7 +265,7 @@ private struct PagerBar: View {
                 step("chevron.backward", to: current - 1, enabled: current > 1)
 
                 if loading {
-                    ProgressView()
+                    BrandLoader(width: 16)
                         .frame(minWidth: 44)
                 } else {
                     Text("\(current)/\(total)")

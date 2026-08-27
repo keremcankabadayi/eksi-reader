@@ -50,7 +50,8 @@ struct TopicListView: View {
             // Önbellekteki liste dururken tazesi geliyor; sessizce olmasın.
             ToolbarItem(placement: .navigationBarTrailing) {
                 if refreshing && !topics.isEmpty {
-                    ProgressView().tint(.white)
+                    // Üst bar dolu renkte; gösterge beyaz olmalı.
+                    BrandLoader(width: 16, tint: .white)
                 }
             }
         }

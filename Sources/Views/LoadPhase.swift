@@ -27,15 +27,10 @@ enum LoadPhase: Equatable {
     case failed(FailureInfo)
 }
 
+/// Ekran boşken bekleme: uygulama işaretinin animasyonlu hâli.
 struct LoadingRow: View {
     var body: some View {
-        HStack {
-            Spacer()
-            ProgressView()
-            Spacer()
-        }
-        .listRowSeparator(.hidden)
-        .padding(.vertical, 32)
+        BrandLoadingView()
     }
 }
 
