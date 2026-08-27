@@ -29,11 +29,14 @@ public enum EksiEndpoint: Hashable, Sendable {
         }
     }
 
-    /// Ekşi bağlantıya konum parametreleri koyuyor: `a=popular` (yalnızca
-    /// popüler entry'ler) ve `focusto=<entry id>` (okunmamış entry'ye odak).
-    /// İkisi de sayfa numarasını yok saydırıp okunmamışın bulunduğu sayfaya
-    /// yönlendiriyor — "önceki entry'ler" hep aynı sayfayı getiriyordu.
-    private static let positionParameters: Set<String> = ["a", "focusto"]
+    /// `focusto=<entry id>` bir konum: sayfa numarasıyla birlikte anlamsız,
+    /// sunucu p'yi yok sayıp o entry'nin sayfasına yönlendiriyor.
+    ///
+    /// `a=popular` ise bir kip, atılmıyor: başlığın kaç sayfa olduğunu
+    /// belirliyor (aynı başlık popüler kipte 63, tümünde 64 sayfa). Atarsak
+    /// sayfa değiştirince liste bambaşka bir evrene atlıyor. `p` açıkça
+    /// yazıldığında Ekşi kipi koruyup istenen sayfayı veriyor.
+    private static let positionParameters: Set<String> = ["focusto"]
 
     /// Sayfayı biz seçtiğimizde `p` her zaman yazılıyor (birinci sayfa dahil),
     /// konum parametreleri atılıyor, diğerlerine dokunulmuyor.

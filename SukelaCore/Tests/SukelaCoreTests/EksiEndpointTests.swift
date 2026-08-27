@@ -52,12 +52,12 @@ final class EksiEndpointTests: XCTestCase {
 
     // MARK: - Sayfa açıkça verilince
 
-    /// Sayfayı biz belirlediğimizde bağlantıdaki p değişiyor, konum
-    /// parametreleri düşüyor, diğerleri kalıyor.
+    /// Sayfayı biz belirlediğimizde bağlantıdaki p değişiyor, kip (a=popular)
+    /// olduğu gibi kalıyor: kip başlığın kaç sayfa olduğunu belirliyor.
     func testExplicitPageReplacesLinkPage() {
         XCTAssertEqual(
             EksiEndpoint.topic(link: "/foo--1?a=popular&p=5", page: 2).url?.absoluteString,
-            "https://eksisozluk.com/foo--1?p=2"
+            "https://eksisozluk.com/foo--1?a=popular&p=2"
         )
     }
 
@@ -81,7 +81,15 @@ final class EksiEndpointTests: XCTestCase {
     func testExplicitPageKeepsOtherParameters() {
         XCTAssertEqual(
             EksiEndpoint.topic(link: "/foo--1?day=2026-08-26&a=popular", page: 4).url?.absoluteString,
-            "https://eksisozluk.com/foo--1?day=2026-08-26&p=4"
+            "https://eksisozluk.com/foo--1?day=2026-08-26&a=popular&p=4"
+        )
+    }
+
+    /// focusto sayfa numarasıyla çelişiyor, o düşüyor.
+    func testExplicitPageDropsFocusButKeepsMode() {
+        XCTAssertEqual(
+            EksiEndpoint.topic(link: "/foo--1?a=popular&focusto=99", page: 2).url?.absoluteString,
+            "https://eksisozluk.com/foo--1?a=popular&p=2"
         )
     }
 
