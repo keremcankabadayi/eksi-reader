@@ -63,8 +63,12 @@ struct TopicDetailView: View {
                     }
 
                     ForEach(rows) { row in
-                        EntryRow(rendered: row, fontSize: fontSize, openInApp: open(link:title:))
-                            .id(row.id)
+                        EntryRow(
+                            rendered: row,
+                            fontSize: fontSize,
+                            openInApp: open(link:title:)
+                        )
+                        .id(row.id)
                     }
                 }
             }
@@ -280,40 +284,6 @@ private struct PagerBar: View {
         }
         .buttonStyle(.bordered)
         .disabled(!enabled || loading)
-    }
-}
-
-private struct EntryRow: View {
-    let rendered: RenderedEntry
-    let fontSize: Double
-    let openInApp: (String, String) -> Void
-
-    private var entry: Entry { rendered.entry }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            EntryBodyView(
-                rendered: rendered,
-                fontSize: fontSize,
-                openInApp: openInApp
-            )
-
-            // Şükela Reader'da tarih gri, nick yeşil; imza satırı sağda.
-            HStack(spacing: 8) {
-                Spacer()
-                if entry.favoriteCount > 0 {
-                    Label("\(entry.favoriteCount)", systemImage: "heart")
-                        .foregroundStyle(.secondary)
-                }
-                Text(entry.date)
-                    .foregroundStyle(.secondary)
-                Text(entry.author.nick)
-                    .foregroundStyle(Palette.green)
-            }
-            .font(.caption)
-        }
-        // Ayırıcıyı List çiziyor, kendi Divider'ımıza gerek yok.
-        .padding(.vertical, 6)
     }
 }
 
