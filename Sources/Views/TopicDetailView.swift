@@ -47,6 +47,19 @@ struct TopicDetailView: View {
         }
         .navigationTitle(pages.first?.title ?? topic.title)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            // Varsayılan inline başlık tek satır ve uzun başlığı "..." ile
+            // kesiyor. Ekşi başlıkları uzun; iki satıra izin verip sığmazsa
+            // puntoyu daraltıyoruz.
+            ToolbarItem(placement: .principal) {
+                Text(pages.first?.title ?? topic.title)
+                    .font(.headline)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.6)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+            }
+        }
         .refreshable { await load() }
         .task {
             guard pages.isEmpty else { return }
