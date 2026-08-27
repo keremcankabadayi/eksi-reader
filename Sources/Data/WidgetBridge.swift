@@ -10,11 +10,9 @@ import SukelaCore
 enum WidgetBridge {
     static func publish(_ topics: [Topic]) {
         guard !topics.isEmpty else { return }
-        guard let container = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: WidgetStore.appGroup
-        ) else {
-            // Ücretsiz imzada App Group verilmemiş olabiliyor; widget o zaman
-            // boş kalıyor, uygulama çalışmaya devam ediyor.
+        guard let container = AppGroupContainer.url else {
+            // Ücretsiz imzada App Group hiç verilmemiş olabiliyor; widget o
+            // zaman boş kalıyor, uygulama çalışmaya devam ediyor.
             AppLog.warn("widget: App Group yok, gündem paylaşılamadı")
             return
         }

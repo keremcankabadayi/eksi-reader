@@ -32,6 +32,8 @@ struct SettingsView: View {
             Section("sürüm") {
                 LabeledContent("uygulama", value: Self.versionString)
                 LabeledContent("bundle id", value: Bundle.main.bundleIdentifier ?? "-")
+                // Widget veriyi buradan okuyor; "yok" ise widget boş kalır.
+                LabeledContent("app group", value: AppGroupContainer.identifier ?? "yok")
             }
         }
         .navigationTitle("ayarlar")

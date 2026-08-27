@@ -18,9 +18,7 @@ enum WidgetFeed {
     }
 
     static func load() async -> Result? {
-        let container = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: WidgetStore.appGroup
-        )
+        let container = AppGroupContainer.url
 
         if let container,
            let session = try? SessionStore.read(from: container),

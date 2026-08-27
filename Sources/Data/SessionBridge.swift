@@ -14,9 +14,7 @@ enum SessionBridge {
     private static let domainSuffix = "eksisozluk.com"
 
     static func publish(from webView: WKWebView) async {
-        guard let container = FileManager.default.containerURL(
-            forSecurityApplicationGroupIdentifier: WidgetStore.appGroup
-        ) else {
+        guard let container = AppGroupContainer.url else {
             AppLog.warn("widget: App Group yok, oturum paylaşılamadı")
             return
         }
