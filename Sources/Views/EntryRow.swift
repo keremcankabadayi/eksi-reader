@@ -49,13 +49,13 @@ struct EntryRow: View {
 
     private var actions: some View {
         HStack(spacing: 22) {
+            Spacer(minLength: 0)
+
             if entry.favoriteCount > 0 {
                 Label("\(entry.favoriteCount)", systemImage: "heart")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-
-            Spacer(minLength: 0)
 
             Menu {
                 Button {
