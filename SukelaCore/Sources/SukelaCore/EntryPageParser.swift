@@ -87,8 +87,20 @@ public enum EntryPageParser {
         return src.hasPrefix("//") ? "https:" + src : src
     }
 
+    /// Dardan genişe. AJAX yanıtında pager'ın sınıfı değişebiliyor; sayfalama
+    /// kaybolursa "önceki entry'ler" satırı hiç görünmüyor, o yüzden yedeği var.
+    private static let pagerSelectors = [
+        "div.pager",
+        "[data-pagecount]",
+    ]
+
     private static func parsePagination(in document: Document) throws -> (Int, Int) {
-        guard let pager = try document.select("div.pager").first() else { return (1, 1) }
+        var pager: Element?
+        for selector in pagerSelectors {
+            pager = try document.select(selector).first()
+            if pager != nil { break }
+        }
+        guard let pager else { return (1, 1) }
         let currentPage = Int(try pager.attr("data-currentpage")) ?? 1
         let pageCount = Int(try pager.attr("data-pagecount")) ?? 1
         return (currentPage, max(pageCount, currentPage))

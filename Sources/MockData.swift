@@ -14,13 +14,16 @@ struct MockFeedProvider: FeedProviding {
     }
 
     func topicPage(link: String, page: Int?) async throws -> TopicPage {
-        TopicPage(
+        // page nil ise "kaldığın yer": önizlemede üstteki "N entry daha"
+        // satırının göründüğü hâli taklit ediyor.
+        let current = page ?? 22
+        return TopicPage(
             title: "örnek başlık",
             slug: "ornek-baslik",
             topicId: "1",
-            entries: Self.entries,
-            currentPage: page ?? 1,
-            pageCount: 1
+            entries: Self.entries(page: current),
+            currentPage: current,
+            pageCount: 30
         )
     }
 
@@ -34,13 +37,17 @@ struct MockFeedProvider: FeedProviding {
         Topic(id: "101", title: "7 günde bir uygulama yenilemek", slug: "d", entryCount: "64", link: "/d--101"),
     ]
 
-    private static let entries: [Entry] = [
-        Entry(
-            id: "1",
-            contentHTML: "önizleme için sahte entry. gerçek veri Ekşi'den geliyor.",
-            author: Author(id: "1", nick: "kerem"),
-            date: "26.08.2026 18:40",
-            favoriteCount: 24
-        ),
-    ]
+    /// Sayfa başına birkaç entry; id'ler sayfa numarasını taşıyor ki önceki
+    /// sayfa yüklendiğinde liste çakışmasın.
+    private static func entries(page: Int) -> [Entry] {
+        (1...3).map { index in
+            Entry(
+                id: "\(page)-\(index)",
+                contentHTML: "sayfa \(page), entry \(index). önizleme için sahte veri.",
+                author: Author(id: "1", nick: "kerem"),
+                date: "26.08.2026 18:40",
+                favoriteCount: index * 8
+            )
+        }
+    }
 }

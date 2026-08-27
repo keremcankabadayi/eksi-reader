@@ -57,6 +57,20 @@ final class EntryPageParserTests: XCTestCase {
         XCTAssertEqual(page.pageCount, 5)
     }
 
+    /// Pager'ın sınıfı değişirse bile sayfa numarasını kaybetmemeliyiz;
+    /// yoksa "N entry daha" satırı hiç çıkmıyor.
+    func testFallsBackToPageCountAttribute() throws {
+        let html = """
+        <html><body><h1 id="title"></h1>
+        <div class="sayfalama" data-currentpage="22" data-pagecount="30"></div>
+        </body></html>
+        """
+        let page = try EntryPageParser.parse(html: html)
+        XCTAssertEqual(page.currentPage, 22)
+        XCTAssertEqual(page.pageCount, 30)
+        XCTAssertEqual(page.precedingEntryCount, 210)
+    }
+
     func testMissingPagerDefaultsToSinglePage() throws {
         let page = try EntryPageParser.parse(html: "<html><body><h1 id=\"title\"></h1></body></html>")
         XCTAssertEqual(page.currentPage, 1)

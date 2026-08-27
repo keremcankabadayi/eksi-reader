@@ -63,6 +63,21 @@ public struct TopicPage: Hashable, Sendable {
     public let currentPage: Int
     public let pageCount: Int
 
+    /// Ekşi bir sayfada en fazla 10 entry gösteriyor. Sunucu bu sayıyı
+    /// söylemiyor; sayfa numarasından entry sayısına geçebilmek için burada.
+    public static let entriesPerPage = 10
+
+    /// Bu sayfadan önce kaç entry var. Başlık ortadan açıldığında üstteki
+    /// "N entry daha" satırında gösterilen sayı.
+    public var precedingEntryCount: Int {
+        max(currentPage - 1, 0) * Self.entriesPerPage
+    }
+
+    /// Yüklenecek bir önceki sayfa; ilk sayfadaysak nil.
+    public var previousPage: Int? {
+        currentPage > 1 ? currentPage - 1 : nil
+    }
+
     public init(
         title: String,
         slug: String,
