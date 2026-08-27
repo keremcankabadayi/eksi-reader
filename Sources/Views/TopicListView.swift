@@ -31,6 +31,7 @@ struct TopicListView: View {
             }
         }
         .listStyle(.plain)
+        .eksiNavigationBar()
         .navigationTitle(feed.title)
         // Sabit ve ortalı başlık: kaydırınca küçülüp kaybolmuyor.
         .navigationBarTitleDisplayMode(.inline)

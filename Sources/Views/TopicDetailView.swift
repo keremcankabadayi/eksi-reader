@@ -51,18 +51,25 @@ struct TopicDetailView: View {
                                 .id(entry.id)
                         }
 
-                        if let last = pages.last, last.pageCount > 1 {
-                            PagerBar(
-                                current: last.currentPage,
-                                total: last.pageCount,
-                                loading: navigating,
-                                failure: pagingFailure
-                            ) { page in
-                                await go(to: page, anchoring: proxy)
-                            }
-                        }
                     }
                     .padding()
+                }
+            }
+            // Sayfalama barı Şükela Reader'daki gibi ekranın altına sabit;
+            // listenin sonuna kadar kaydırmadan sayfa değiştirilebiliyor.
+            .safeAreaInset(edge: .bottom) {
+                if let last = pages.last, last.pageCount > 1 {
+                    PagerBar(
+                        current: last.currentPage,
+                        total: last.pageCount,
+                        loading: navigating,
+                        failure: pagingFailure
+                    ) { page in
+                        await go(to: page, anchoring: proxy)
+                    }
+                    .padding(.horizontal)
+                    .padding(.vertical, 6)
+                    .background(.bar)
                 }
             }
         }
@@ -83,6 +90,7 @@ struct TopicDetailView: View {
         }
         // Geri düğmesinde yalnızca ok kalsın, önceki ekranın adı yazılmasın.
         .toolbarRole(.editor)
+        .eksiNavigationBar()
         .refreshable { await load() }
         // Liste ekranındaki `navigationDestination(for: Topic.self)` ile
         // çakışmasın diye bağlantılar isPresented ile açılıyor.
@@ -262,15 +270,19 @@ private struct EntryRow: View {
                 openInApp: openInApp
             )
 
+            // Şükela Reader'da tarih gri, nick yeşil; imza satırı sağda.
             HStack(spacing: 8) {
                 Spacer()
                 if entry.favoriteCount > 0 {
                     Label("\(entry.favoriteCount)", systemImage: "heart")
+                        .foregroundStyle(.secondary)
                 }
-                Text("\(entry.author.nick) · \(entry.date)")
+                Text(entry.date)
+                    .foregroundStyle(.secondary)
+                Text(entry.author.nick)
+                    .foregroundStyle(Palette.green)
             }
             .font(.caption)
-            .foregroundStyle(.secondary)
 
             Divider()
         }

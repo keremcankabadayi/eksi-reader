@@ -33,7 +33,7 @@ struct EntryBodyView: View {
             var piece = AttributedString(segment.text)
             if let url = segment.link?.url {
                 piece.link = url
-                piece.foregroundColor = .accentColor
+                piece.foregroundColor = Palette.orange
             }
             result.append(piece)
         }
