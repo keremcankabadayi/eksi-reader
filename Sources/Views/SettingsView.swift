@@ -21,6 +21,14 @@ struct SettingsView: View {
                 }
             }
 
+            Section("teşhis") {
+                NavigationLink {
+                    LogsView()
+                } label: {
+                    Label("günlük", systemImage: "text.alignleft")
+                }
+            }
+
             Section("sürüm") {
                 LabeledContent("uygulama", value: Self.versionString)
                 LabeledContent("bundle id", value: Bundle.main.bundleIdentifier ?? "-")

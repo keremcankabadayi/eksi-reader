@@ -67,7 +67,9 @@ struct EksiFeedProvider: FeedProviding {
             topics = try DebeParser.parse(html: page.html)
         }
 
+        AppLog.info("\(feed.rawValue): \(topics.count) başlık ayrıştırıldı")
         guard !topics.isEmpty else {
+            AppLog.warn("\(feed.rawValue): ayrıştırma boş döndü, sayfa başlığı: \(page.html.count) karakter")
             throw EmptyParseError(page: page, what: "Başlık")
         }
         return topics
@@ -77,7 +79,9 @@ struct EksiFeedProvider: FeedProviding {
         let fetched = try await fetch(.topic(link: link, page: page))
         let parsed = try EntryPageParser.parse(html: fetched.html)
 
+        AppLog.info("\(link): \(parsed.entries.count) entry, sayfa \(parsed.currentPage)/\(parsed.pageCount)")
         guard !parsed.entries.isEmpty else {
+            AppLog.warn("\(link): entry bulunamadı")
             throw EmptyParseError(page: fetched, what: "Entry")
         }
         return parsed

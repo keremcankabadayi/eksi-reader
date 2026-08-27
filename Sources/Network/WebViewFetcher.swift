@@ -7,6 +7,7 @@ enum FetchError: LocalizedError {
     case noWindow
     case badResponse
     case httpStatus(Int)
+    case javaScript(String)
 
     var errorDescription: String? {
         switch self {
@@ -18,6 +19,8 @@ enum FetchError: LocalizedError {
             return "Sunucudan beklenmeyen yanıt geldi."
         case let .httpStatus(code):
             return "Sunucu \(code) döndü."
+        case let .javaScript(detail):
+            return "Sayfa içi istek düştü: \(detail)"
         }
     }
 }
@@ -46,6 +49,22 @@ final class WebViewFetcher: NSObject {
 
     private override init() { super.init() }
 
+    /// callAsyncJavaScript hatayı yutup "A JavaScript exception occurred"
+    /// diyor; gerçek mesaj userInfo içinde duruyor.
+    private static func describe(_ error: Error) -> String {
+        let nsError = error as NSError
+        var parts = ["\(nsError.domain) \(nsError.code): \(nsError.localizedDescription)"]
+        for key in [
+            "WKJavaScriptExceptionMessage",
+            "WKJavaScriptExceptionSourceURL",
+            "WKJavaScriptExceptionLineNumber",
+            "WKJavaScriptExceptionColumnNumber",
+        ] where nsError.userInfo[key] != nil {
+            parts.append("\(key)=\(nsError.userInfo[key]!)")
+        }
+        return parts.joined(separator: " | ")
+    }
+
     // MARK: - Public
 
     func fetch(_ url: URL, headers: [String: String] = [:]) async throws -> FetchedPage {
@@ -53,6 +72,7 @@ final class WebViewFetcher: NSObject {
 
         var response = try await runFetch(url, headers: headers)
         if CloudflareChallenge.isChallenge(headers: response.headers, html: response.body) {
+            AppLog.warn("challenge yakalandı, oturum yenileniyor")
             // Oturum bayatlamış: baştan bootstrap edip bir kez daha deniyoruz.
             invalidate()
             guard await bootstrap() else { throw FetchError.cloudflareBlocked }
@@ -79,6 +99,7 @@ final class WebViewFetcher: NSObject {
     }
 
     private func startBootstrap() {
+        AppLog.info("bootstrap başlıyor")
         mainFrameStatusCode = nil
         mainFrameHeaders = [:]
 
@@ -121,6 +142,11 @@ final class WebViewFetcher: NSObject {
 
         if !success { invalidate() }
 
+        if success {
+            AppLog.info("bootstrap tamam")
+        } else {
+            AppLog.warn("bootstrap başarısız")
+        }
         let pending = waiters
         waiters.removeAll()
         pending.forEach { $0.resume(returning: success) }
@@ -175,32 +201,69 @@ final class WebViewFetcher: NSObject {
     /// İsteği sayfanın içinde çalıştırıyor. Çerez, User-Agent, TLS parmak izi —
     /// hepsini tarayıcı kendi koyuyor, biz karışmıyoruz.
     private static let fetchScript = """
-    const response = await fetch(url, {
-      method: 'GET',
-      credentials: 'include',
-      redirect: 'follow',
-      headers: headers
-    });
-    const headers = {};
-    response.headers.forEach((value, key) => { headers[key] = value; });
-    return { status: response.status, headers: headers, body: await response.text() };
+    try {
+      const response = await fetch(url, {
+        method: 'GET',
+        credentials: 'include',
+        redirect: 'follow',
+        headers: requestHeaders
+      });
+      const responseHeaders = {};
+      response.headers.forEach((value, key) => { responseHeaders[key] = value; });
+      return {
+        ok: true,
+        status: response.status,
+        headers: responseHeaders,
+        body: await response.text()
+      };
+    } catch (error) {
+      // Hatayı fırlatmıyoruz: callAsyncJavaScript onu yutup yerine
+      // "A JavaScript exception occurred" diyor. Veri olarak döndürünce
+      // gerçek mesaj günlüğe düşüyor.
+      return {
+        ok: false,
+        name: String(error && error.name),
+        message: String(error && error.message ? error.message : error),
+        stack: String(error && error.stack ? error.stack : '-')
+      };
+    }
     """
 
     private func runFetch(_ url: URL, headers: [String: String]) async throws -> RawResponse {
         guard let webView else { throw FetchError.cloudflareBlocked }
 
-        let value = try await webView.callAsyncJavaScript(
-            Self.fetchScript,
-            arguments: ["url": url.absoluteString, "headers": headers],
-            in: nil,
-            contentWorld: .page
-        )
+        let value: Any?
+        do {
+            value = try await webView.callAsyncJavaScript(
+                Self.fetchScript,
+                arguments: ["url": url.absoluteString, "requestHeaders": headers],
+                in: nil,
+                contentWorld: .page
+            )
+        } catch {
+            AppLog.error("JS çağrısı düştü: \(Self.describe(error))")
+            throw FetchError.javaScript(Self.describe(error))
+        }
 
-        guard let dictionary = value as? [String: Any],
-              let status = dictionary["status"] as? Int,
-              let body = dictionary["body"] as? String else {
+        guard let dictionary = value as? [String: Any] else {
+            AppLog.error("JS yanıtı sözlük değil: \(String(describing: value))")
             throw FetchError.badResponse
         }
+
+        if dictionary["ok"] as? Bool == false {
+            let name = dictionary["name"] as? String ?? "-"
+            let message = dictionary["message"] as? String ?? "-"
+            let stack = dictionary["stack"] as? String ?? "-"
+            AppLog.error("fetch() JS hatası: \(name): \(message)\n\(stack)")
+            throw FetchError.javaScript("\(name): \(message)")
+        }
+
+        guard let status = dictionary["status"] as? Int,
+              let body = dictionary["body"] as? String else {
+            AppLog.error("JS yanıtında status/body yok: \(dictionary.keys.sorted())")
+            throw FetchError.badResponse
+        }
+        AppLog.info("fetch \(url.absoluteString) -> HTTP \(status), \(body.count) karakter")
 
         let rawHeaders = dictionary["headers"] as? [String: Any] ?? [:]
         let headers = rawHeaders.reduce(into: [String: String]()) { result, pair in
