@@ -30,9 +30,8 @@ struct TopicRow: View {
         .padding(.vertical, 2)
     }
 
-    /// Satır zemini. Tema renklerine dokunmadan, mevcut zeminin üstüne
-    /// çok hafif bir kontrast koyuyor; açık ve koyu temada da çalışıyor.
+    /// Satır zemini; entry listesiyle aynı zebra kuralı.
     static func background(isEven: Bool) -> Color {
-        isEven ? Color.clear : Color.primary.opacity(0.04)
+        Palette.row(isEven: isEven)
     }
 }

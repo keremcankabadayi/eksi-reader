@@ -61,13 +61,18 @@ struct TopicDetailView: View {
                         .listRowSeparator(.hidden)
                     }
 
-                    ForEach(rows) { row in
+                    // Entry kutuları da başlık listesi gibi zebra: uzun
+                    // entry'lerde nerede bitip nerede başladığı ayrışıyor.
+                    ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
                         EntryRow(
                             rendered: row,
                             fontSize: fontSize,
                             openInApp: open(link:title:)
                         )
                         .id(row.id)
+                        .listRowBackground(Palette.row(isEven: index % 2 == 0))
+                        // Sınırı zebra çiziyor; ayraç çizgisi fazlalık.
+                        .listRowSeparator(.hidden)
                     }
                 }
             }

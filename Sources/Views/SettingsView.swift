@@ -2,9 +2,19 @@ import SwiftUI
 
 struct SettingsView: View {
     @AppStorage("entryFontSize") private var fontSize: Double = 16
+    @AppStorage(AppTheme.storageKey) private var theme: AppTheme = .light
 
     var body: some View {
         Form {
+            Section("görünüm") {
+                Picker("tema", selection: $theme) {
+                    ForEach(AppTheme.allCases) { option in
+                        Text(option.label).tag(option)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+
             Section("okuma") {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack {
