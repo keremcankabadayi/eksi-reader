@@ -48,21 +48,21 @@ final class WebViewFetcher: NSObject {
 
     // MARK: - Public
 
-    func fetch(_ url: URL) async throws -> String {
+    func fetch(_ url: URL, headers: [String: String] = [:]) async throws -> FetchedPage {
         guard await bootstrap() else { throw FetchError.cloudflareBlocked }
 
-        var response = try await runFetch(url)
+        var response = try await runFetch(url, headers: headers)
         if CloudflareChallenge.isChallenge(headers: response.headers, html: response.body) {
             // Oturum bayatlamış: baştan bootstrap edip bir kez daha deniyoruz.
             invalidate()
             guard await bootstrap() else { throw FetchError.cloudflareBlocked }
-            response = try await runFetch(url)
+            response = try await runFetch(url, headers: headers)
         }
 
         guard (200...299).contains(response.status) else {
             throw FetchError.httpStatus(response.status)
         }
-        return response.body
+        return FetchedPage(url: url, status: response.status, html: response.body)
     }
 
     // MARK: - Bootstrap
@@ -178,19 +178,20 @@ final class WebViewFetcher: NSObject {
     const response = await fetch(url, {
       method: 'GET',
       credentials: 'include',
-      redirect: 'follow'
+      redirect: 'follow',
+      headers: headers
     });
     const headers = {};
     response.headers.forEach((value, key) => { headers[key] = value; });
     return { status: response.status, headers: headers, body: await response.text() };
     """
 
-    private func runFetch(_ url: URL) async throws -> RawResponse {
+    private func runFetch(_ url: URL, headers: [String: String]) async throws -> RawResponse {
         guard let webView else { throw FetchError.cloudflareBlocked }
 
         let value = try await webView.callAsyncJavaScript(
             Self.fetchScript,
-            arguments: ["url": url.absoluteString],
+            arguments: ["url": url.absoluteString, "headers": headers],
             in: nil,
             contentWorld: .page
         )

@@ -13,8 +13,9 @@ struct TopicListView: View {
             switch phase {
             case .loading where topics.isEmpty:
                 LoadingRow()
-            case let .failed(message):
-                ErrorRow(message: message) { await load() }
+            case let .failed(failure):
+                ErrorView(failure: failure) { await load() }
+                    .listRowSeparator(.hidden)
             default:
                 ForEach(topics) { topic in
                     NavigationLink(value: topic) {
@@ -39,9 +40,9 @@ struct TopicListView: View {
         phase = .loading
         do {
             topics = try await provider.topics(for: feed)
-            phase = topics.isEmpty ? .failed("Başlık bulunamadı.") : .loaded
+            phase = .loaded
         } catch {
-            phase = .failed(error.localizedDescription)
+            phase = .failed(FailureInfo(error))
         }
     }
 }

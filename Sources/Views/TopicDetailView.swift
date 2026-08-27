@@ -14,16 +14,9 @@ struct TopicDetailView: View {
             switch phase {
             case .loading where page == nil:
                 ProgressView().padding(.vertical, 48)
-            case let .failed(message):
-                VStack(spacing: 12) {
-                    Text(message)
-                        .font(.callout)
-                        .multilineTextAlignment(.center)
-                        .foregroundStyle(.secondary)
-                    Button("tekrar dene") { Task { await load() } }
-                        .buttonStyle(.bordered)
-                }
-                .padding(.vertical, 48)
+            case let .failed(failure):
+                ErrorView(failure: failure) { await load() }
+                    .padding(.horizontal)
             default:
                 LazyVStack(alignment: .leading, spacing: 24) {
                     ForEach(page?.entries ?? []) { entry in
@@ -45,11 +38,10 @@ struct TopicDetailView: View {
     private func load() async {
         phase = .loading
         do {
-            let loaded = try await provider.topicPage(link: topic.link, page: 1)
-            page = loaded
-            phase = loaded.entries.isEmpty ? .failed("Entry bulunamadı.") : .loaded
+            page = try await provider.topicPage(link: topic.link, page: 1)
+            phase = .loaded
         } catch {
-            phase = .failed(error.localizedDescription)
+            phase = .failed(FailureInfo(error))
         }
     }
 }

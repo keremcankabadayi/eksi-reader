@@ -1,13 +1,30 @@
 import SwiftUI
+import UIKit
 
-/// Ekranların yükleme durumu. Ekşi HTML'i değiştiğinde parser boş dönebiliyor,
-/// o yüzden "boş" da bir hata hâli olarak gösteriliyor — sessizce boş liste
-/// göstermek sorunu gizler.
+/// Bir hatanın ekranda gösterilecek hâli.
+struct FailureInfo: Equatable {
+    let message: String
+    /// Ayrıştırma boş döndüğünde ne geldiğini anlatan teşhis metni.
+    /// Ekşi işaretlemeyi değiştirdiğinde tahmin etmek yerine bakabilelim diye.
+    let details: String?
+
+    init(_ error: Error) {
+        message = error.localizedDescription
+        details = (error as? EmptyParseError)?.diagnostics
+    }
+
+    init(message: String, details: String? = nil) {
+        self.message = message
+        self.details = details
+    }
+}
+
+/// Ekranların yükleme durumu.
 enum LoadPhase: Equatable {
     case idle
     case loading
     case loaded
-    case failed(String)
+    case failed(FailureInfo)
 }
 
 struct LoadingRow: View {
@@ -22,26 +39,50 @@ struct LoadingRow: View {
     }
 }
 
-struct ErrorRow: View {
-    let message: String
+struct ErrorView: View {
+    let failure: FailureInfo
     let retry: () async -> Void
+
+    @State private var showDetails = false
 
     var body: some View {
         VStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.title2)
                 .foregroundStyle(.secondary)
-            Text(message)
+
+            Text(failure.message)
                 .font(.callout)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
+
             Button("tekrar dene") {
                 Task { await retry() }
             }
             .buttonStyle(.bordered)
+
+            if let details = failure.details {
+                DisclosureGroup("detaylar", isExpanded: $showDetails) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Button {
+                            UIPasteboard.general.string = details
+                        } label: {
+                            Label("kopyala", systemImage: "doc.on.doc")
+                        }
+                        .buttonStyle(.bordered)
+
+                        Text(details)
+                            .font(.system(size: 11, design: .monospaced))
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                    .padding(.top, 8)
+                }
+                .font(.caption)
+                .padding(.top, 8)
+            }
         }
         .frame(maxWidth: .infinity)
-        .listRowSeparator(.hidden)
         .padding(.vertical, 32)
     }
 }
