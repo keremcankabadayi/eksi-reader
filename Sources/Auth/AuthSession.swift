@@ -21,8 +21,8 @@ final class AuthSession: ObservableObject {
     private static let loggedInKey = "authLoggedIn"
     private static let nickKey = "authNick"
 
-    /// Ekşi'nin oturum çerezleri. Giriş ekranı da bunlara bakıyor.
-    /// Giriş ekranı bunu ana iş parçacığı dışından okuyor.
+    /// Ekşi'nin oturum çerezleri. Giriş ekranı bunları ana iş parçacığı
+    /// dışından okuyor.
     nonisolated static let authCookieNames: Set<String> = [".AspNetCore.Cookies", "a"]
     private static let domainSuffix = "eksisozluk.com"
 
