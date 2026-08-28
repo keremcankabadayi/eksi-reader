@@ -19,6 +19,8 @@ struct TopicDetailView: View {
     private static let topAnchor = "top"
     /// Gövdedeki bir bkz bağlantısına tıklanınca açılan başlık.
     @State private var linkedTopic: Topic?
+    /// Harici bağlantı: üstte açılan uygulama içi web kartı.
+    @State private var popup: PopupLink?
 
     /// Çizime hazır satırlar. Gövde ayrıştırması burada bir kez yapılıyor;
     /// satır çizilirken yapılırsa liste yukarı kaydırırken takılıyor.
@@ -69,7 +71,8 @@ struct TopicDetailView: View {
                         EntryRow(
                             rendered: row,
                             fontSize: fontSize,
-                            openInApp: open(link:title:)
+                            openInApp: open(link:title:),
+                            openPopup: { popup = $0 }
                         )
                         .id(row.id)
                         .listRowBackground(Palette.row(isEven: index % 2 == 0))
@@ -142,6 +145,10 @@ struct TopicDetailView: View {
                 // kendi kendine referans veriyor ve derlenmiyor.
                 AnyView(TopicDetailView(topic: linkedTopic, provider: provider))
             }
+        }
+        // Harici bağlantılar Safari'ye gitmiyor, buradaki kartta açılıyor.
+        .sheet(item: $popup) { link in
+            WebPopupView(link: link)
         }
         .task {
             guard pages.isEmpty else { return }

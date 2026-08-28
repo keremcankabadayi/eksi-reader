@@ -8,6 +8,7 @@ struct EntryRow: View {
     let rendered: RenderedEntry
     let fontSize: Double
     let openInApp: (String, String) -> Void
+    let openPopup: (PopupLink) -> Void
 
     private var entry: Entry { rendered.entry }
 
@@ -20,7 +21,8 @@ struct EntryRow: View {
             EntryBodyView(
                 rendered: rendered,
                 fontSize: fontSize,
-                openInApp: openInApp
+                openInApp: openInApp,
+                openPopup: openPopup
             )
 
             signature
@@ -78,9 +80,9 @@ struct EntryRow: View {
                     }
 
                     Button {
-                        UIApplication.shared.open(permalink)
+                        openPopup(PopupLink(url: permalink, label: "entry \(entry.id)"))
                     } label: {
-                        Label("safari'de aç", systemImage: "safari")
+                        Label("tarayıcıda aç", systemImage: "safari")
                     }
                 }
             } label: {

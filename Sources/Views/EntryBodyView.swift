@@ -49,6 +49,8 @@ struct EntryBodyView: View {
     let fontSize: Double
     /// Site içi bağlantı tıklandığında çağrılıyor: başlık yolu ve gösterilen ad.
     let openInApp: (String, String) -> Void
+    /// Harici bağlantı tıklandığında çağrılıyor; uygulama içi kartta açılıyor.
+    let openPopup: (PopupLink) -> Void
 
     var body: some View {
         Text(rendered.body)
@@ -65,11 +67,16 @@ struct EntryBodyView: View {
                 }
             }
             .environment(\.openURL, OpenURLAction { url in
-                // Site içi bağlantılar uygulamada açılıyor; profil ve harici
-                // bağlantılar sisteme bırakılıyor.
-                guard let link = EntryLink.classify(href: url.absoluteString),
-                      let inAppLink = link.inAppLink else { return .systemAction }
-                openInApp(inAppLink, rendered.labels[url] ?? "")
+                // Site içi başlıklar aynı yığında açılıyor; profil, görsel ve
+                // harici bağlantılar (x, instagram, resim, ne olursa) uygulama
+                // içi popup kartında. Hiçbiri Safari'ye atılmıyor.
+                let label = rendered.labels[url] ?? ""
+                if let link = EntryLink.classify(href: url.absoluteString),
+                   let inAppLink = link.inAppLink {
+                    openInApp(inAppLink, label)
+                } else {
+                    openPopup(PopupLink(url: url, label: label))
+                }
                 return .handled
             })
     }
