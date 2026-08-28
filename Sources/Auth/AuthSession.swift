@@ -21,8 +21,9 @@ final class AuthSession: ObservableObject {
     private static let loggedInKey = "authLoggedIn"
     private static let nickKey = "authNick"
 
-    /// Ekşi'nin oturum çerezleri.
-    private static let authCookieNames: Set<String> = [".AspNetCore.Cookies", "a"]
+    /// Ekşi'nin oturum çerezleri. Giriş ekranı da bunlara bakıyor.
+    /// Giriş ekranı bunu ana iş parçacığı dışından okuyor.
+    nonisolated static let authCookieNames: Set<String> = [".AspNetCore.Cookies", "a"]
     private static let domainSuffix = "eksisozluk.com"
 
     private init() {
@@ -39,6 +40,23 @@ final class AuthSession: ObservableObject {
         // Gizli tarayıcı sayfayı girişsizken yüklemişti; çerezler ortak ama
         // sayfanın kendi durumu bayat. Bir sonraki istek yeniden kuruyor.
         WebViewFetcher.shared.reset()
+
+        // Giriş ekranı nick'i veremediyse (Ekşi doğrudan ana sayfaya
+        // atmışsa) üst menüden okuyoruz.
+        if self.nick == nil {
+            Task { await refreshIdentity() }
+        }
+    }
+
+    /// Ana sayfayı tam hâliyle çekip üst menüden nick'i okuyor.
+    ///
+    /// Başlık listesi isteklerini `X-Requested-With` ile atıyoruz, o yüzden
+    /// oradan parça HTML geliyor ve üst menü hiç bulunmuyor. Burada başlık
+    /// göndermiyoruz.
+    func refreshIdentity() async {
+        guard let url = URL(string: EksiEndpoint.baseURL + "/"),
+              let page = try? await WebViewFetcher.shared.fetch(url) else { return }
+        apply(html: page.html)
     }
 
     /// Elimize geçen bir sayfadan oturum durumunu tazeliyor. Üst menüsü

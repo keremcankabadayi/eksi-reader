@@ -39,7 +39,9 @@ struct TopicDetailView: View {
             List {
                 switch phase {
                 case .loading where rows.isEmpty:
-                    LoadingRow()
+                    // Gösterge listenin ilk satırında değil, ekranın
+                    // ortasında duruyor (aşağıdaki overlay).
+                    EmptyView()
                 case let .failed(failure) where rows.isEmpty:
                     ErrorView(failure: failure) { await load() }
                         .listRowSeparator(.hidden)
@@ -81,6 +83,11 @@ struct TopicDetailView: View {
             // altına kendi rengimizi koyuyoruz.
             .scrollContentBackground(.hidden)
             .background(Palette.base)
+            .overlay {
+                if phase == .loading, rows.isEmpty {
+                    BrandLoadingView()
+                }
+            }
             // Sayfalama barı sekme çubuğunun yerini alıyor: başlık açıkken
             // gündem/debe/ayarlar gizleniyor, aynı yerde sayfalama duruyor.
             .safeAreaInset(edge: .bottom, spacing: 0) {

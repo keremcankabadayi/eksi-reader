@@ -57,11 +57,16 @@ struct BrandMarkView: View {
 /// Sistem çarkıfeleğinin yerini alıyor; bütün bekleme anları aynı işareti
 /// gösterdiği için uygulama tek parça duruyor.
 struct BrandLoader: View {
-    /// En geniş çubuğun genişliği. Satır içinde 14-18, ekran ortasında 44.
+    /// En geniş çubuğun genişliği. Satır içinde 14-18, ekran ortasında 56.
     var width: CGFloat = 44
     var tint: Color = Palette.brand
+    /// Ekran ortasındaki büyük gösterge kendi ekseninde dönüyor: çubuklar
+    /// öne gelirken genişliyor, arkaya giderken daralıyor. Satır içi küçük
+    /// kullanımlarda dönüş göz yorduğu için kapalı.
+    var spins = false
 
     @State private var animating = false
+    @State private var spin: Double = 0
 
     var body: some View {
         BrandMarkView(
@@ -76,25 +81,42 @@ struct BrandLoader: View {
                 .delay(Double(index) * 0.12)
             }
         )
-        .onAppear { animating = true }
+        // Zeminden yükselmiş dursun.
+        .shadow(
+            color: .black.opacity(spins ? 0.3 : 0),
+            radius: width * 0.14,
+            y: width * 0.1
+        )
+        // Hafif yatık duruş, üstüne kendi ekseninde dönüş.
+        .rotation3DEffect(
+            .degrees(spins ? 18 : 0),
+            axis: (x: 1, y: 0, z: 0),
+            perspective: 0.6
+        )
+        .rotation3DEffect(
+            .degrees(spin),
+            axis: (x: 0, y: 1, z: 0),
+            perspective: 0.75
+        )
+        .onAppear {
+            animating = true
+            guard spins else { return }
+            withAnimation(.linear(duration: 2.6).repeatForever(autoreverses: false)) {
+                spin = 360
+            }
+        }
         .accessibilityLabel("yükleniyor")
     }
 }
 
-/// Ekran ortasında bekleme. Liste satırı olarak da kullanılabilsin diye
-/// ayraçları kendisi gizliyor.
+/// Ekranın tam ortasında bekleme. Liste satırı değil: içeriğin üstüne
+/// `overlay` olarak konuluyor, gösterge ortada duruyor.
 struct BrandLoadingView: View {
-    var width: CGFloat = 44
+    var width: CGFloat = 56
 
     var body: some View {
-        HStack {
-            Spacer()
-            BrandLoader(width: width)
-            Spacer()
-        }
-        .listRowSeparator(.hidden)
-        .listRowBackground(Color.clear)
-        .padding(.vertical, 40)
+        BrandLoader(width: width, spins: true)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

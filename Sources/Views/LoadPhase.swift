@@ -27,13 +27,6 @@ enum LoadPhase: Equatable {
     case failed(FailureInfo)
 }
 
-/// Ekran boşken bekleme: uygulama işaretinin animasyonlu hâli.
-struct LoadingRow: View {
-    var body: some View {
-        BrandLoadingView()
-    }
-}
-
 struct ErrorView: View {
     let failure: FailureInfo
     let retry: () async -> Void

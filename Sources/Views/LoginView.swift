@@ -65,19 +65,36 @@ private struct LoginWebView: UIViewRepresentable {
             self.onSuccess = onSuccess
         }
 
-        /// Her sayfa yüklendiğinde üst menüye bakıyoruz: profil bağlantısı
-        /// çıktıysa giriş olmuş demektir. Ekşi giriş sonrası nereye
-        /// yönlendirirse yönlendirsin bu kural tutuyor.
+        /// Her sayfa yüklendiğinde iki şeye bakıyoruz: oturum çerezi düştü mü,
+        /// üst menüde profil bağlantısı çıktı mı.
+        ///
+        /// Asıl kanıt çerez. Ekşi giriş sonrası nereye yönlendirirse
+        /// yönlendirsin, üst menüyü hangi işaretlemeyle çizerse çizsin tutuyor;
+        /// yalnızca menüye bakmak yetmiyordu, giriş oluyor ama uygulama
+        /// girişsiz sanıyordu. Menü ayrıştırması artık yalnızca nick için.
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             guard !finished else { return }
-            webView.evaluateJavaScript("document.documentElement.outerHTML") { [weak self] result, _ in
-                guard let self, !self.finished,
-                      let html = result as? String,
-                      let state = try? AuthParser.parse(html: html),
-                      state.isLoggedIn else { return }
+            let currentURL = webView.url
 
-                self.finished = true
-                self.onSuccess(state.nick)
+            webView.evaluateJavaScript("document.documentElement.outerHTML") { [weak self] result, _ in
+                guard let self, !self.finished else { return }
+                let state = try? AuthParser.parse(html: result as? String ?? "")
+
+                webView.configuration.websiteDataStore.httpCookieStore.getAllCookies { cookies in
+                    guard !self.finished else { return }
+
+                    let hasAuthCookie = cookies.contains { cookie in
+                        AuthSession.authCookieNames.contains(cookie.name) && !cookie.value.isEmpty
+                    }
+                    // Form hâlâ ekrandaysa iş bitmemiştir: /giris ilk
+                    // açıldığında da elimizde çerez olabilir.
+                    let onLoginPage = currentURL?.path.hasPrefix("/giris") ?? false
+
+                    guard state?.isLoggedIn == true || (hasAuthCookie && !onLoginPage) else { return }
+
+                    self.finished = true
+                    self.onSuccess(state?.nick)
+                }
             }
         }
     }
