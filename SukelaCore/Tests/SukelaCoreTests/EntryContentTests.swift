@@ -119,4 +119,3 @@ final class EntryContentTests: XCTestCase {
         XCTAssertEqual(entry.segments.compactMap(\.link), [.topic(link: "/?q=bkz")])
     }
 }
-echo skip
