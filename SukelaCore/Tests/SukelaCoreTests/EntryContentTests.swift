@@ -107,9 +107,16 @@ final class EntryContentTests: XCTestCase {
         XCTAssertEqual(segments, [EntrySegment(text: "tıkla")])
     }
 
+    func testExternalURLSurvivesUnescapedCharacters() throws {
+        let link = EntryLink.external(url: "https://x.com/biri/status/1?s=20 ")
+        let url = try XCTUnwrap(link.url)
+        XCTAssertEqual(url.host, "x.com")
+    }
+
     func testParsedEntryExposesSegments() throws {
         let page = try EntryPageParser.parse(html: try Fixture.html("topic"))
         let entry = try XCTUnwrap(page.entries.first)
         XCTAssertEqual(entry.segments.compactMap(\.link), [.topic(link: "/?q=bkz")])
     }
 }
+echo skip

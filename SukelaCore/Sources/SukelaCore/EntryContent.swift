@@ -33,7 +33,12 @@ public enum EntryLink: Hashable, Sendable {
             components?.path = "/biri/\(nick)"
             return components?.url
         case let .external(url):
-            return URL(string: url)
+            // Gövdedeki adres kaçışsız gelebiliyor (boşluk, Türkçe harf); ham hali
+            // nil dönerse `URL` kurulamıyor ve bağlantı tıklanamaz oluyor.
+            if let direct = URL(string: url) { return direct }
+            return url
+                .addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed)
+                .flatMap(URL.init(string:))
         }
     }
 

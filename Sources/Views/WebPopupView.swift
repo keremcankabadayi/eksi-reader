@@ -35,6 +35,7 @@ struct WebPopupView: View {
     @State private var progress: Double = 0
     @State private var loading = false
     @State private var pageTitle: String?
+    @State private var failure: String?
 
     var body: some View {
         NavigationStack {
@@ -89,10 +90,42 @@ struct WebPopupView: View {
             ZoomableImageView(url: link.url)
                 .background(Palette.base)
         } else {
-            PopupWebView(url: link.url, progress: $progress, loading: $loading, title: $pageTitle)
-                .background(Palette.base)
-                .ignoresSafeArea(edges: .bottom)
+            PopupWebView(
+                url: link.url,
+                progress: $progress,
+                loading: $loading,
+                title: $pageTitle,
+                failure: $failure
+            )
+            .background(Palette.base)
+            .ignoresSafeArea(edges: .bottom)
+            .overlay {
+                if let failure {
+                    failureView(failure)
+                }
+            }
         }
+    }
+
+    /// Sayfa açılmazsa beyaz ekran bırakmıyoruz; nedenini ve Safari çıkışını gösteriyoruz.
+    private func failureView(_ message: String) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.largeTitle)
+            Text("sayfa açılamadı")
+                .font(.headline)
+            Text(message)
+                .font(.footnote)
+                .multilineTextAlignment(.center)
+            Button("safari'de aç") {
+                UIApplication.shared.open(link.url)
+            }
+            .buttonStyle(.bordered)
+        }
+        .foregroundStyle(Palette.meta)
+        .padding(24)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Palette.base)
     }
 }
 
@@ -102,9 +135,10 @@ private struct PopupWebView: UIViewRepresentable {
     @Binding var progress: Double
     @Binding var loading: Bool
     @Binding var title: String?
+    @Binding var failure: String?
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(progress: $progress, loading: $loading, title: $title)
+        Coordinator(progress: $progress, loading: $loading, title: $title, failure: $failure)
     }
 
     func makeUIView(context: Context) -> WKWebView {
@@ -112,11 +146,17 @@ private struct PopupWebView: UIViewRepresentable {
         // Gizli tarayıcı ve giriş ekranı ile aynı depo: Ekşi sayfaları girişli açılıyor.
         configuration.websiteDataStore = .default()
         configuration.allowsInlineMediaPlayback = true
+        // WKWebView'in varsayılan user agent'ında "Version/… Safari/…" yok; x.com
+        // bunu görünce sayfa yerine "javascript is not available" veriyor. Safari
+        // sürüm imzasını ekleyince normal mobil sayfa geliyor.
+        configuration.applicationNameForUserAgent = "Version/17.0 Mobile/15E148 Safari/604.1"
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
         webView.allowsBackForwardNavigationGestures = true
         webView.isOpaque = false
         webView.backgroundColor = .clear
+        webView.navigationDelegate = context.coordinator
+        webView.uiDelegate = context.coordinator
         context.coordinator.observe(webView)
         webView.load(URLRequest(url: url))
         return webView
@@ -129,16 +169,84 @@ private struct PopupWebView: UIViewRepresentable {
         webView.stopLoading()
     }
 
-    final class Coordinator: NSObject {
+    final class Coordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
         @Binding private var progress: Double
         @Binding private var loading: Bool
         @Binding private var title: String?
+        @Binding private var failure: String?
         private var tokens: [NSKeyValueObservation] = []
 
-        init(progress: Binding<Double>, loading: Binding<Bool>, title: Binding<String?>) {
+        init(
+            progress: Binding<Double>,
+            loading: Binding<Bool>,
+            title: Binding<String?>,
+            failure: Binding<String?>
+        ) {
             _progress = progress
             _loading = loading
             _title = title
+            _failure = failure
+        }
+
+        // x.com sayfası tweet'i `target="_blank"` ile açıyor; yeni pencere
+        // veremediğimiz için aynı görünümde yüklüyoruz, yoksa dokunuş ölü kalıyor.
+        func webView(
+            _ webView: WKWebView,
+            createWebViewWith configuration: WKWebViewConfiguration,
+            for navigationAction: WKNavigationAction,
+            windowFeatures: WKWindowFeatures
+        ) -> WKWebView? {
+            if navigationAction.targetFrame == nil, let url = navigationAction.request.url {
+                webView.load(URLRequest(url: url))
+            }
+            return nil
+        }
+
+        /// `twitter://`, `itms-apps://` gibi şemaları WKWebView yükleyemiyor;
+        /// bunları sisteme veriyoruz, sayfa da hata vermeden yerinde kalıyor.
+        func webView(
+            _ webView: WKWebView,
+            decidePolicyFor navigationAction: WKNavigationAction,
+            decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+        ) {
+            guard let url = navigationAction.request.url else {
+                decisionHandler(.allow)
+                return
+            }
+            let scheme = url.scheme?.lowercased()
+            if scheme == "http" || scheme == "https" || scheme == "about" {
+                decisionHandler(.allow)
+                return
+            }
+            decisionHandler(.cancel)
+            Task { @MainActor in
+                if UIApplication.shared.canOpenURL(url) {
+                    UIApplication.shared.open(url)
+                }
+            }
+        }
+
+        func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
+            Task { @MainActor in self.failure = nil }
+        }
+
+        func webView(
+            _ webView: WKWebView,
+            didFailProvisionalNavigation navigation: WKNavigation!,
+            withError error: Error
+        ) {
+            report(error)
+        }
+
+        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+            report(error)
+        }
+
+        /// Kullanıcı gezinmeyi kendisi kestiyse (`NSURLErrorCancelled`) hata değil.
+        private func report(_ error: Error) {
+            let nsError = error as NSError
+            guard nsError.domain != NSURLErrorDomain || nsError.code != NSURLErrorCancelled else { return }
+            Task { @MainActor in self.failure = nsError.localizedDescription }
         }
 
         func observe(_ webView: WKWebView) {
