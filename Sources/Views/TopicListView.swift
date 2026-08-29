@@ -116,7 +116,10 @@ struct TopicListView: View {
         // birlikte yukarı kayıp gidebilsin diye.
         .scrollDismissesKeyboard(.immediately)
         .navigationDestination(for: Topic.self) { topic in
-            TopicDetailView(topic: topic)
+            // Debe'de her satır tek bir entry; komşuları veriyoruz ki
+            // ekranda sağa/sola kaydırarak önceki/sonraki entry'ye geçilsin.
+            // Gündemde satır bir başlık, kaydırmanın karşılığı yok.
+            TopicDetailView(topic: topic, siblings: feed == .debe ? visibleTopics : [])
         }
         // Klavyedeki "ara" tuşu aynı yere gidiyor; satıra dokunmak şart değil.
         .navigationDestination(isPresented: $searching) {

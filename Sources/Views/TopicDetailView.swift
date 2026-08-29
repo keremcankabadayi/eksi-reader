@@ -3,8 +3,22 @@ import SwiftUI
 import SukelaCore
 
 struct TopicDetailView: View {
-    let topic: Topic
-    var provider: FeedProviding = EksiFeedProvider.shared
+    /// Ekranda duran başlık. Debe'de yatay kaydırma bunu komşusuyla
+    /// değiştiriyor, o yüzden `let` değil.
+    @State private var topic: Topic
+    /// Kaydırmayla gezilebilen komşular (debe listesi). Boşsa kaydırma yok.
+    private let siblings: [Topic]
+    private let provider: FeedProviding
+
+    init(
+        topic: Topic,
+        siblings: [Topic] = [],
+        provider: FeedProviding = EksiFeedProvider.shared
+    ) {
+        _topic = State(initialValue: topic)
+        self.siblings = siblings
+        self.provider = provider
+    }
 
     @AppStorage("entryFontSize") private var fontSize: Double = 16
     /// Sayfalar sırayla duruyor; başa eklenen her sayfa daha eski entry'ler.
@@ -36,6 +50,26 @@ struct TopicDetailView: View {
     private var pager: TopicPage? {
         guard let last = pages.last, last.pageCount > 1 else { return nil }
         return last
+    }
+
+    /// Ekrandaki entry'nin komşu listesindeki yeri; listede yoksa nil.
+    private var siblingIndex: Int? {
+        siblings.firstIndex { $0.id == topic.id }
+    }
+
+    private var previousSibling: Topic? {
+        guard let index = siblingIndex, index > 0 else { return nil }
+        return siblings[index - 1]
+    }
+
+    private var nextSibling: Topic? {
+        guard let index = siblingIndex, index + 1 < siblings.count else { return nil }
+        return siblings[index + 1]
+    }
+
+    /// Sayfalama barı yoksa ve komşular varsa alta debe gezinme barı geliyor.
+    private var showsSiblingBar: Bool {
+        pager == nil && siblingIndex != nil && siblings.count > 1
     }
 
     var body: some View {
@@ -93,6 +127,14 @@ struct TopicDetailView: View {
             // altına kendi rengimizi koyuyoruz.
             .scrollContentBackground(.hidden)
             .background(Palette.base)
+            // Debe'de yatay kaydırma komşu entry'ye geçiriyor. `simultaneous`:
+            // listenin kendi dikey kaydırması çalışmaya devam etsin.
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 24, coordinateSpace: .local)
+                    .onEnded { drag in
+                        switchSibling(with: drag)
+                    }
+            )
             .overlay {
                 if phase == .loading, rows.isEmpty {
                     BrandLoadingView()
@@ -114,10 +156,23 @@ struct TopicDetailView: View {
                     .padding(.vertical, 2)
                     // Zemin ana ekran çubuğunun altına kadar insin.
                     .background(.bar, ignoresSafeAreaEdges: .bottom)
+                } else if showsSiblingBar, let index = siblingIndex {
+                    // Kaydırmanın düğmeli karşılığı: hem keşfedilir oluyor
+                    // hem de kaçıncı entry'de olduğun görünüyor.
+                    SiblingBar(
+                        current: index + 1,
+                        total: siblings.count,
+                        previous: previousSibling,
+                        next: nextSibling,
+                        go: show(_:)
+                    )
+                    .padding(.horizontal)
+                    .padding(.vertical, 2)
+                    .background(.bar, ignoresSafeAreaEdges: .bottom)
                 }
             }
         }
-        .toolbar(pager == nil ? .visible : .hidden, for: .tabBar)
+        .toolbar(pager == nil && !showsSiblingBar ? .visible : .hidden, for: .tabBar)
         .navigationTitle(pages.first?.title ?? topic.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -172,10 +227,40 @@ struct TopicDetailView: View {
         } message: { detail in
             Text(detail)
         }
-        .task {
+        // id: topic.id — komşuya geçince yeniden koşuyor.
+        .task(id: topic.id) {
             guard pages.isEmpty else { return }
             await load()
         }
+    }
+
+    /// Yatay kaydırma komşu entry'ye geçiriyor; dikey kaydırma tetiklemiyor.
+    private func switchSibling(with drag: DragGesture.Value) {
+        let dx = drag.translation.width
+        let dy = drag.translation.height
+        // Yatay bileşen hem yeterince uzun hem de dikeyin iki katı olmalı.
+        guard abs(dx) > 60, abs(dx) > abs(dy) * 2 else { return }
+
+        if dx < 0 {
+            guard let next = nextSibling else { return }
+            show(next)
+        } else {
+            // Sol kenardan başlayan sağa kaydırma sistemin geri hareketi;
+            // ona karışmıyoruz.
+            guard drag.startLocation.x > 40, let previous = previousSibling else { return }
+            show(previous)
+        }
+    }
+
+    /// Ekranı komşu entry'ye çeviriyor; yükleme `task(id:)` ile başlıyor.
+    private func show(_ next: Topic) {
+        guard next.id != topic.id else { return }
+        pages = []
+        rows = []
+        phase = .loading
+        previousFailure = nil
+        pagingFailure = nil
+        topic = next
     }
 
     private static func render(_ pages: [TopicPage]) -> [RenderedEntry] {
@@ -283,6 +368,44 @@ private struct PreviousEntriesButton: View {
                     .foregroundStyle(.secondary)
             }
         }
+    }
+}
+
+/// Debe gezinme barı: <  3/50  >. Kaydırmanın düğmeli karşılığı.
+private struct SiblingBar: View {
+    let current: Int
+    let total: Int
+    let previous: Topic?
+    let next: Topic?
+    let go: (Topic) -> Void
+
+    var body: some View {
+        HStack(spacing: 18) {
+            step("chevron.backward", to: previous)
+
+            Text("\(current)/\(total)")
+                .font(.footnote)
+                .monospacedDigit()
+                .foregroundStyle(Palette.sage)
+                .frame(minWidth: 44)
+
+            step("chevron.forward", to: next)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 2)
+    }
+
+    private func step(_ symbol: String, to topic: Topic?) -> some View {
+        Button {
+            if let topic { go(topic) }
+        } label: {
+            Image(systemName: symbol)
+                .font(.footnote.weight(.semibold))
+                .frame(width: 30, height: 24)
+        }
+        .buttonStyle(.plain)
+        .foregroundStyle(Palette.sage.opacity(topic == nil ? 0.3 : 1))
+        .disabled(topic == nil)
     }
 }
 
