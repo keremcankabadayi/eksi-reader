@@ -13,6 +13,10 @@ struct MockFeedProvider: FeedProviding {
         }
     }
 
+    func favoriteAuthors(entryId: String) async throws -> [String] {
+        ["kerem", "başka yazar", "üçüncü yazar"]
+    }
+
     func topicPage(link: String, page: Int?) async throws -> TopicPage {
         // page nil ise "kaldığın yer": önizlemede üstteki "N entry daha"
         // satırının göründüğü hâli taklit ediyor.

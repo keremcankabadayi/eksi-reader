@@ -9,6 +9,8 @@ struct EntryRow: View {
     let fontSize: Double
     let openInApp: (String, String) -> Void
     let openPopup: (PopupLink) -> Void
+    /// Favori sayısına dokunuldu: listeyi başlık ekranı açıyor.
+    let showFavorites: () -> Void
 
     @EnvironmentObject private var auth: AuthSession
     @EnvironmentObject private var votes: VoteService
@@ -58,14 +60,17 @@ struct EntryRow: View {
             Spacer(minLength: 0)
 
             if entry.favoriteCount > 0 {
-                // Label kalp ile sayı arasına geniş bir boşluk koyuyor;
-                // ikiliyi kendimiz diziyoruz.
-                HStack(spacing: 3) {
-                    Image(systemName: "heart")
-                    Text("\(entry.favoriteCount)")
+                // Dokununca favorileyenler açılıyor, Ekşi'deki gibi.
+                Button(action: showFavorites) {
+                    // Label kalp ile sayı arasına geniş bir boşluk koyuyor;
+                    // ikiliyi kendimiz diziyoruz.
+                    HStack(spacing: 3) {
+                        Image(systemName: "heart")
+                        Text("\(entry.favoriteCount)")
+                    }
+                    .font(.caption)
+                    .foregroundStyle(Palette.meta)
                 }
-                .font(.caption)
-                .foregroundStyle(Palette.meta)
             }
 
             Menu {

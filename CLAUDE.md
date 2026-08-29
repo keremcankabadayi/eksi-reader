@@ -75,6 +75,19 @@ Bu uçlar ve öznitelikler canlı siteden doğrulandı: sayfanın HTML'i
 web.archive.org'dan, oy mantığı `ekstat.com/js/ek$i-combo.js` içinden
 okundu (eksisozluk.com'un kendisi buradan 403 veriyor, ikisi vermiyor).
 
+## Favorileyenler
+
+Entry'nin altındaki kalp+sayı bir düğme: dokununca favorileyen yazarlar
+kartta açılıyor (`FavoriteListView`). Sayı sıfırken düğme hiç çizilmiyor.
+
+Liste entry ile gelmiyor, ayrı adreste: `/entry/favorileyenler?entryId=…`
+parça HTML döndürüyor. `FavoriteListParser` sarmalayana bakmıyor, yazar
+bağlantılarını (`/biri/<nick>`) topluyor — işaretleme değişse de ayakta
+kalsın diye. Aynı parçadaki "çaylakları göster" bağlantısı yazar değil,
+listeye girmiyor.
+
+Favorileme (`/entry/favla`, `/entry/favlama`) henüz yok, yalnızca okuma var.
+
 ## Widget
 
 Gündem widget'ı `Widget/` altında, ayrı bir app-extension hedefi. **Veriyi kendi

@@ -37,4 +37,6 @@ protocol FeedProviding {
     /// `page` nil ise bağlantının kendi sorgusu korunuyor: Ekşi daha önce
     /// açtığın başlıkta nereden devam edeceğini orada söylüyor.
     func topicPage(link: String, page: Int?) async throws -> TopicPage
+    /// Entry'yi favorileyen yazarların nick'leri.
+    func favoriteAuthors(entryId: String) async throws -> [String]
 }

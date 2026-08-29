@@ -21,6 +21,8 @@ struct TopicDetailView: View {
     @State private var linkedTopic: Topic?
     /// Harici bağlantı: üstte açılan uygulama içi web kartı.
     @State private var popup: PopupLink?
+    /// Favorileyenler kartı açık olan entry.
+    @State private var favoritesOf: Entry?
 
     /// Çizime hazır satırlar. Gövde ayrıştırması burada bir kez yapılıyor;
     /// satır çizilirken yapılırsa liste yukarı kaydırırken takılıyor.
@@ -76,7 +78,8 @@ struct TopicDetailView: View {
                             rendered: row,
                             fontSize: fontSize,
                             openInApp: open(link:title:),
-                            openPopup: { popup = $0 }
+                            openPopup: { popup = $0 },
+                            showFavorites: { favoritesOf = row.entry }
                         )
                         .id(row.id)
                         .listRowBackground(Palette.row(isEven: index % 2 == 0))
@@ -153,6 +156,9 @@ struct TopicDetailView: View {
         // Harici bağlantılar Safari'ye gitmiyor, buradaki kartta açılıyor.
         .sheet(item: $popup) { link in
             WebPopupView(link: link)
+        }
+        .sheet(item: $favoritesOf) { entry in
+            FavoriteListView(entry: entry, provider: provider)
         }
         .alert(
             "oy verilemedi",

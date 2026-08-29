@@ -18,6 +18,8 @@ public enum EksiEndpoint: Hashable, Sendable {
     case vote
     /// Verilmiş oyu geri alma.
     case removeVote
+    /// Bir entry'yi favorileyen yazarların listesi. Parça HTML dönüyor.
+    case favoriteAuthors(entryId: String)
 
     public static let baseURL = "https://eksisozluk.com"
 
@@ -35,6 +37,12 @@ public enum EksiEndpoint: Hashable, Sendable {
             return Self.make(path: "/entry/vote", query: [], page: nil)
         case .removeVote:
             return Self.make(path: "/entry/removevote", query: [], page: nil)
+        case let .favoriteAuthors(entryId):
+            return Self.make(
+                path: "/entry/favorileyenler",
+                query: [URLQueryItem(name: "entryId", value: entryId)],
+                page: nil
+            )
         case let .topic(link, page):
             let (path, query) = Self.split(link)
             guard let page else {

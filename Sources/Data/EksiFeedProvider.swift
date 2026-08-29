@@ -102,6 +102,15 @@ struct EksiFeedProvider: FeedProviding {
         return parsed
     }
 
+    /// Favorileyenler listesi parça HTML olarak geliyor; sayfanın geri
+    /// kalanı yok, oturum durumu için bakılacak bir şey de yok.
+    func favoriteAuthors(entryId: String) async throws -> [String] {
+        let fetched = try await fetch(.favoriteAuthors(entryId: entryId))
+        let nicks = try FavoriteListParser.parse(html: fetched.html)
+        AppLog.info("entry \(entryId): \(nicks.count) favorileyen")
+        return nicks
+    }
+
     private func fetch(_ endpoint: EksiEndpoint) async throws -> FetchedPage {
         guard let url = endpoint.url else { throw FetchError.badResponse }
         return try await WebViewFetcher.shared.fetch(url, headers: Self.headers)
