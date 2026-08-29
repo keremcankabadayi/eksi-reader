@@ -11,9 +11,55 @@ struct TopicListView: View {
     @State private var phase: LoadPhase = .idle
     /// Ekranda önbellekten gelen liste dururken ağdan taze liste bekleniyor.
     @State private var refreshing = false
+    /// Arama kutusundaki metin. Yazdıkça ekrandaki liste süzülüyor.
+    @State private var query = ""
+    /// Klavyedeki "ara" tuşuyla açılan arama sayfası. Kutu sonradan
+    /// temizlenirse açık sayfa kapanmasın diye ayrıca tutuluyor.
+    @State private var searching = false
+    @State private var submittedSearch: Topic?
+
+    /// Baştaki ve sondaki boşluk kullanıcının niyeti değil.
+    private var trimmedQuery: String {
+        query.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Ekrandaki liste: arama kutusu doluyken yalnız eşleşen başlıklar.
+    /// Süzme yerel, elimizdeki listede; Ekşi'de aramak ayrı bir satır.
+    private var visibleTopics: [Topic] {
+        guard !trimmedQuery.isEmpty else { return topics }
+        return topics.filter { $0.title.localizedCaseInsensitiveContains(trimmedQuery) }
+    }
+
+    /// "ekşi'de ara" satırının gittiği yer: sitenin kendi arama yolu.
+    private var searchTopic: Topic? {
+        guard let link = EntryLink.lookupLink(for: trimmedQuery) else { return nil }
+        return Topic(id: link, title: trimmedQuery, slug: "", entryCount: "", link: link)
+    }
 
     var body: some View {
         List {
+            // Listenin ilk satırı: aşağı kaydırınca kayıp gidiyor, en üste
+            // dönünce geri geliyor. Uygulama açıldığında liste en üstte
+            // olduğu için kutu görünür durumda başlıyor.
+            TopicSearchField(query: $query) {
+                guard let searchTopic else { return }
+                submittedSearch = searchTopic
+                searching = true
+            }
+            .listRowBackground(Palette.base)
+            .listRowSeparator(.hidden)
+            .listRowInsets(EdgeInsets(top: 8, leading: 12, bottom: 4, trailing: 12))
+
+            if let searchTopic {
+                NavigationLink(value: searchTopic) {
+                    Label("ekşi'de ara: \(searchTopic.title)", systemImage: "magnifyingglass")
+                        .font(.footnote)
+                        .foregroundStyle(Palette.link)
+                }
+                .listRowBackground(Palette.base)
+                .listRowSeparator(.hidden)
+            }
+
             switch phase {
             case .loading where topics.isEmpty:
                 // Boş ekran + çarkıfelek yerine listenin iskeleti.
@@ -22,7 +68,7 @@ struct TopicListView: View {
                 ErrorView(failure: failure) { await load() }
                     .listRowSeparator(.hidden)
             default:
-                ForEach(Array(topics.enumerated()), id: \.element.id) { index, topic in
+                ForEach(Array(visibleTopics.enumerated()), id: \.element.id) { index, topic in
                     // NavigationLink kendi ok işaretini çiziyor; satırı
                     // görünmez bir link'in üstüne koyup oku gizliyoruz.
                     ZStack {
@@ -66,8 +112,17 @@ struct TopicListView: View {
                 }
             }
         }
+        // Kaydırmaya başlayınca klavye kapanıyor; arama kutusu da listeyle
+        // birlikte yukarı kayıp gidebilsin diye.
+        .scrollDismissesKeyboard(.immediately)
         .navigationDestination(for: Topic.self) { topic in
             TopicDetailView(topic: topic)
+        }
+        // Klavyedeki "ara" tuşu aynı yere gidiyor; satıra dokunmak şart değil.
+        .navigationDestination(isPresented: $searching) {
+            if let submittedSearch {
+                TopicDetailView(topic: submittedSearch)
+            }
         }
         .refreshable { await load() }
         .task {
