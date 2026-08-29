@@ -14,6 +14,10 @@ public enum EksiEndpoint: Hashable, Sendable {
     case login
     /// Çıkış.
     case logout
+    /// Entry oyu (artı/eksi). Gövde POST ile gidiyor.
+    case vote
+    /// Verilmiş oyu geri alma.
+    case removeVote
 
     public static let baseURL = "https://eksisozluk.com"
 
@@ -27,6 +31,10 @@ public enum EksiEndpoint: Hashable, Sendable {
             return Self.make(path: "/giris", query: [], page: nil)
         case .logout:
             return Self.make(path: "/terk", query: [], page: nil)
+        case .vote:
+            return Self.make(path: "/entry/vote", query: [], page: nil)
+        case .removeVote:
+            return Self.make(path: "/entry/removevote", query: [], page: nil)
         case let .topic(link, page):
             let (path, query) = Self.split(link)
             guard let page else {

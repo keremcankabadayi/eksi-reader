@@ -50,6 +50,26 @@ Dikkat: `SessionBridge` Ekşi çerezlerinin hepsini App Group'a yazıyor, oturum
 çerezi de buna dahil. Aynı uygulamanın kutusu, ama widget'a giden veriyi
 genişletirken bunu hatırla.
 
+## Oylama
+
+Artı/eksi düğmeleri `EntryRow`'da, işi `VoteService` yapıyor. İstek
+`WebViewFetcher.post` ile gidiyor: `fetch()` artık GET dışında gövde de
+taşıyor, çerezi ve Referer'ı yine sayfanın kendisi koyuyor.
+
+- Uçlar: `/entry/vote` (`id`, `owner`, `rate`) ve `/entry/removevote`
+  (`id`, `owner`). Aynı yöne ikinci kez basmak oyu geri alıyor.
+- Gövdeye ASP.NET antiforgery anahtarı ekleniyor; anahtar ana sayfadan
+  okunuyor (`VoteParser.verificationToken`) ve oturum boyunca saklanıyor.
+  JSON yerine HTML dönerse anahtar bir kez tazelenip istek yineleniyor.
+- **Ekşi kimin ne oy verdiğini sayfada söylemiyor.** `VoteService` yalnızca
+  bu oturumda bu uygulamadan verilen oyları tutuyor; uygulama kapanınca
+  düğmeler nötre dönüyor, sunucudaki oy duruyor. Çıkışta tablo siliniyor.
+- İstek iyimser: renk hemen değişiyor, sunucu hayır derse eski hâline dönüp
+  başlık ekranında uyarı çıkıyor.
+- Uç adresleri ve alan adları canlı siteden doğrulanamadı (Codespaces'ten
+  eksisozluk.com 403 veriyor). İlk telefon denemesinde tutmazsa bakılacak
+  yer `VoteService.submit` ve `EksiEndpoint.vote`.
+
 ## Widget
 
 Gündem widget'ı `Widget/` altında, ayrı bir app-extension hedefi. **Veriyi kendi

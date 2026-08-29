@@ -10,6 +10,9 @@ struct EntryRow: View {
     let openInApp: (String, String) -> Void
     let openPopup: (PopupLink) -> Void
 
+    @EnvironmentObject private var auth: AuthSession
+    @EnvironmentObject private var votes: VoteService
+
     private var entry: Entry { rendered.entry }
 
     private var permalink: URL? {
@@ -89,12 +92,10 @@ struct EntryRow: View {
                 Image(systemName: "ellipsis")
             }
 
-            // Oy vermek Ekşi'de giriş istiyor, bu uygulamada giriş yok.
-            // Düzen bozulmasın diye oklar duruyor ama pasif.
-            Image(systemName: "arrow.up")
-                .foregroundStyle(Palette.link.opacity(0.3))
-            Image(systemName: "arrow.down")
-                .foregroundStyle(Palette.link.opacity(0.3))
+            // Oy vermek Ekşi'de giriş istiyor: girişsizken oklar duruyor
+            // ama sönük ve pasif.
+            voteButton(.up, symbol: "arrow.up")
+            voteButton(.down, symbol: "arrow.down")
 
             if let permalink {
                 ShareLink(item: permalink) {
@@ -105,6 +106,27 @@ struct EntryRow: View {
         .font(.system(size: 15))
         .foregroundStyle(Palette.link)
         .buttonStyle(.plain)
+    }
+
+    /// Aynı yöne ikinci kez basmak oyu geri alıyor; rengi `VoteService`
+    /// söylüyor, istek dönene kadar düğme kapalı.
+    private func voteButton(_ direction: VoteDirection, symbol: String) -> some View {
+        let current = votes.direction(for: entry.id)
+        let busy = votes.isPending(entry.id)
+
+        return Button {
+            Task { await votes.toggle(entry: entry, direction: direction) }
+        } label: {
+            Image(systemName: current == direction ? "\(symbol).circle.fill" : symbol)
+        }
+        .disabled(!auth.isLoggedIn || busy)
+        .foregroundStyle(voteTint(direction, current: current, busy: busy))
+    }
+
+    private func voteTint(_ direction: VoteDirection, current: VoteDirection?, busy: Bool) -> Color {
+        guard auth.isLoggedIn else { return Palette.link.opacity(0.3) }
+        if current == direction { return Palette.brand }
+        return Palette.link.opacity(busy ? 0.4 : 1)
     }
 }
 

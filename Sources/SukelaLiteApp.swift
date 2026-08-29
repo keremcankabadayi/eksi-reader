@@ -33,6 +33,8 @@ struct SukelaLiteApp: App {
             .preferredColorScheme(theme.colorScheme)
             // Menü ve giriş ekranı aynı oturumu paylaşıyor.
             .environmentObject(AuthSession.shared)
+            // Oy düğmeleri bütün entry satırlarında aynı tabloya bakıyor.
+            .environmentObject(VoteService.shared)
             // Cloudflare doğrulamasını ilk istek beklemesin diye
             // uygulama açılır açılmaz arka planda başlatıyoruz.
             .task {

@@ -26,6 +26,10 @@ struct TopicDetailView: View {
     /// satır çizilirken yapılırsa liste yukarı kaydırırken takılıyor.
     @State private var rows: [RenderedEntry] = []
 
+    /// Oy hatası burada gösteriliyor: satırın kendi içinde yer yok, düğme
+    /// zaten eski hâline dönüyor.
+    @EnvironmentObject private var votes: VoteService
+
     /// Sayfalama gerektiren başlıkta son yüklenen sayfa; tek sayfalıkta nil.
     private var pager: TopicPage? {
         guard let last = pages.last, last.pageCount > 1 else { return nil }
@@ -149,6 +153,18 @@ struct TopicDetailView: View {
         // Harici bağlantılar Safari'ye gitmiyor, buradaki kartta açılıyor.
         .sheet(item: $popup) { link in
             WebPopupView(link: link)
+        }
+        .alert(
+            "oy verilemedi",
+            isPresented: Binding(
+                get: { votes.failure != nil },
+                set: { if !$0 { votes.failure = nil } }
+            ),
+            presenting: votes.failure
+        ) { _ in
+            Button("tamam", role: .cancel) {}
+        } message: { detail in
+            Text(detail)
         }
         .task {
             guard pages.isEmpty else { return }
@@ -325,4 +341,6 @@ private struct PagerBar: View {
             provider: MockFeedProvider.shared
         )
     }
+    .environmentObject(AuthSession.shared)
+    .environmentObject(VoteService.shared)
 }

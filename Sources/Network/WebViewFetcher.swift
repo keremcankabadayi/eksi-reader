@@ -82,18 +82,62 @@ final class WebViewFetcher: NSObject {
     }
 
     func fetch(_ url: URL, headers: [String: String] = [:]) async throws -> FetchedPage {
+        try await send(url, method: "GET", body: nil, headers: headers)
+    }
+
+    /// Form gövdeli POST. Oy vermek gibi yazma işlemleri buradan geçiyor:
+    /// çerezi, Referer'ı ve TLS parmak izini yine tarayıcı koyuyor.
+    ///
+    /// Ekşi bu uçlarda XHR bekliyor; her çağıran ayrı ayrı uğraşmasın diye
+    /// başlıkları burada ekliyoruz.
+    func post(
+        _ url: URL,
+        form: [String: String],
+        headers: [String: String] = [:]
+    ) async throws -> FetchedPage {
+        var requestHeaders = [
+            "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
+            "X-Requested-With": "XMLHttpRequest",
+            "Accept": "application/json, text/javascript, */*; q=0.01",
+        ]
+        requestHeaders.merge(headers) { _, override in override }
+        return try await send(url, method: "POST", body: Self.encode(form), headers: requestHeaders)
+    }
+
+    /// `application/x-www-form-urlencoded` gövdesi.
+    private static func encode(_ form: [String: String]) -> String {
+        var allowed = CharacterSet.alphanumerics
+        allowed.insert(charactersIn: "-._~")
+        return form
+            .sorted { $0.key < $1.key }
+            .map { pair in
+                let key = pair.key.addingPercentEncoding(withAllowedCharacters: allowed) ?? pair.key
+                let value = pair.value.addingPercentEncoding(withAllowedCharacters: allowed)
+                    ?? pair.value
+                return "\(key)=\(value)"
+            }
+            .joined(separator: "&")
+    }
+
+    private func send(
+        _ url: URL,
+        method: String,
+        body: String?,
+        headers: [String: String]
+    ) async throws -> FetchedPage {
         let started = ContinuousClock.now
         guard await Stopwatch.measure("bootstrap beklendi", { await bootstrap() }) else {
             throw FetchError.cloudflareBlocked
         }
 
-        var response = try await runFetch(url, headers: headers)
+        var response = try await runFetch(url, method: method, body: body, headers: headers)
         if CloudflareChallenge.isChallenge(headers: response.headers, html: response.body) {
             AppLog.warn("challenge yakalandı, oturum yenileniyor")
-            // Oturum bayatlamış: baştan bootstrap edip bir kez daha deniyoruz.
+            // Challenge yanıtı isteğin uygulamaya hiç ulaşmadığı anlamına
+            // geliyor; POST'u tekrarlamak da bu yüzden güvenli.
             invalidate()
             guard await bootstrap() else { throw FetchError.cloudflareBlocked }
-            response = try await runFetch(url, headers: headers)
+            response = try await runFetch(url, method: method, body: body, headers: headers)
         }
 
         guard (200...299).contains(response.status) else {
@@ -228,12 +272,17 @@ final class WebViewFetcher: NSObject {
     /// hepsini tarayıcı kendi koyuyor, biz karışmıyoruz.
     private static let fetchScript = """
     try {
-      const response = await fetch(url, {
-        method: 'GET',
+      const options = {
+        method: method,
         credentials: 'include',
         redirect: 'follow',
         headers: requestHeaders
-      });
+      };
+      // GET/HEAD gövde kabul etmiyor, null vermek bile TypeError atıyor.
+      if (body !== null && method !== 'GET' && method !== 'HEAD') {
+        options.body = body;
+      }
+      const response = await fetch(url, options);
       const responseHeaders = {};
       response.headers.forEach((value, key) => { responseHeaders[key] = value; });
       return {
@@ -255,7 +304,12 @@ final class WebViewFetcher: NSObject {
     }
     """
 
-    private func runFetch(_ url: URL, headers: [String: String]) async throws -> RawResponse {
+    private func runFetch(
+        _ url: URL,
+        method: String,
+        body: String?,
+        headers: [String: String]
+    ) async throws -> RawResponse {
         guard let webView else { throw FetchError.cloudflareBlocked }
 
         let requestStart = ContinuousClock.now
@@ -263,7 +317,14 @@ final class WebViewFetcher: NSObject {
         do {
             value = try await webView.callAsyncJavaScript(
                 Self.fetchScript,
-                arguments: ["url": url.absoluteString, "requestHeaders": headers],
+                arguments: [
+                    "url": url.absoluteString,
+                    "method": method,
+                    // callAsyncJavaScript Optional kabul etmiyor; JS tarafında
+                    // null görünsün diye NSNull veriyoruz.
+                    "body": body ?? NSNull(),
+                    "requestHeaders": headers,
+                ],
                 in: nil,
                 contentWorld: .page
             )
