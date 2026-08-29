@@ -40,19 +40,24 @@ public struct Entry: Identifiable, Hashable, Sendable {
     public let author: Author
     public let date: String
     public let favoriteCount: Int
+    /// Bu kullanıcının entry'ye verdiği oy. Ekşi sayfada söylüyor
+    /// (`data-isliked` / `data-isdisliked`), girişsizken hep nil.
+    public let vote: VoteDirection?
 
     public init(
         id: String,
         contentHTML: String,
         author: Author,
         date: String,
-        favoriteCount: Int
+        favoriteCount: Int,
+        vote: VoteDirection? = nil
     ) {
         self.id = id
         self.contentHTML = contentHTML
         self.author = author
         self.date = date
         self.favoriteCount = favoriteCount
+        self.vote = vote
     }
 }
 

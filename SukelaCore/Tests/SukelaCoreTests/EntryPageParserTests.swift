@@ -141,4 +141,27 @@ extension EntryPageParserTests {
         XCTAssertEqual(page.entries.first?.id, "7")
         XCTAssertEqual(page.entries.first?.plainText, "ikinci gövde")
     }
+
+    /// Ekşi verilmiş oyu entry özniteliğinde söylüyor; girişsiz sayfada
+    /// öznitelik hiç olmuyor, o zaman oy yok.
+    func testReadsGivenVote() throws {
+        let entries = try page().entries
+        XCTAssertEqual(entries[0].vote, .up)
+        XCTAssertNil(entries[1].vote)
+    }
+
+    func testReadsDownVote() throws {
+        let html = """
+        <html><body>
+        <ul id="entry-item-list">
+          <li data-id="9" data-author="a" data-author-id="1" data-favorite-count="0"
+              data-isliked="false" data-isdisliked="true">
+            <div class="content">eksi oy</div>
+            <a class="entry-date permalink" href="/entry/9">02.01.2026 11:00</a>
+          </li>
+        </ul>
+        </body></html>
+        """
+        XCTAssertEqual(try EntryPageParser.parse(html: html).entries.first?.vote, .down)
+    }
 }

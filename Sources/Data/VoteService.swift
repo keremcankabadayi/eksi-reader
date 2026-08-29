@@ -22,28 +22,31 @@ enum VoteError: LocalizedError {
 
 /// Entry oyları.
 ///
-/// Ekşi oyu sayfada göstermiyor (kimin ne verdiği listede yok), o yüzden
-/// buradaki tablo yalnızca **bu oturumda bu uygulamadan** verilen oyları
-/// tutuyor. Uygulama kapanınca sıfırlanıyor; sunucudaki oy duruyor.
-///
-/// İstek iyimser: düğmeye basınca renk hemen değişiyor, sunucu hayır derse
-/// eski hâline dönüyor.
+/// Kaynak sayfanın kendisi: Ekşi verilmiş oyu entry'nin özniteliğinde
+/// söylüyor (`Entry.vote`), yani uygulama kapanıp açılınca oy yerinde
+/// duruyor. Burada tutulan tablo yalnızca **taze sayfayı beklemeyen**
+/// üstyazım: düğmeye basınca renk hemen değişsin diye. Sayfa yeniden
+/// çekildiğinde sunucunun dediği geçerli oluyor.
 @MainActor
 final class VoteService: ObservableObject {
     static let shared = VoteService()
 
-    @Published private(set) var votes: [String: VoteDirection] = [:]
+    /// Sunucudan gelen değeri geçici olarak örten oylar.
+    ///
+    /// Değer kasten iki katlı optional: anahtar yoksa "üstyazım yok",
+    /// anahtar varken nil ise "oy geri alındı" demek.
+    @Published private(set) var overrides: [String: VoteDirection?] = [:]
     @Published private(set) var pending: Set<String> = []
     /// Son hata; ekran gösterip temizliyor.
     @Published var failure: String?
 
-    /// ASP.NET antiforgery anahtarı. Oturum başına sabit, bir kez alıp
-    /// saklıyoruz; reddedilirse tazeleniyor.
-    private var token: String?
-
     private init() {}
 
-    func direction(for entryId: String) -> VoteDirection? { votes[entryId] }
+    /// Önce üstyazım, yoksa sayfanın söylediği.
+    func direction(for entry: Entry) -> VoteDirection? {
+        if let override = overrides[entry.id] { return override }
+        return entry.vote
+    }
 
     func isPending(_ entryId: String) -> Bool { pending.contains(entryId) }
 
@@ -56,86 +59,66 @@ final class VoteService: ObservableObject {
             return
         }
 
-        let previous = votes[id]
-        let target: VoteDirection? = previous == direction ? nil : direction
+        let current = self.direction(for: entry)
+        let target: VoteDirection? = current == direction ? nil : direction
 
         pending.insert(id)
-        votes[id] = target
+        overrides[id] = .some(target)
         defer { pending.remove(id) }
 
         do {
-            try await submit(entryId: id, ownerId: entry.author.id, target: target, canRetry: true)
+            try await submit(
+                entryId: id,
+                ownerId: entry.author.id,
+                rate: direction,
+                removing: target == nil
+            )
             AppLog.info("oy \(id): \(target.map { String($0.rawValue) } ?? "geri alındı")")
         } catch {
-            votes[id] = previous
+            // Sunucu hayır dedi: sayfanın söylediğine geri dön.
+            overrides[id] = nil
             failure = error.localizedDescription
             AppLog.warn("oy düştü \(id): \(error.localizedDescription)")
+
+            if (error as? VoteParseError) == .notLoggedIn {
+                // Oturum sunucuda kapanmış; menüdeki durumu tazeleyelim.
+                await AuthSession.shared.refreshIdentity()
+            }
         }
     }
 
-    /// Çıkış yapıldı ya da oturum düştü: eldeki tablo artık bu kullanıcıya ait
-    /// değil.
-    func clear() {
-        votes.removeAll()
-        pending.removeAll()
-        token = nil
+    /// Taze sayfa geldi: artık sunucu ne diyorsa o. Uçuşta olan oyların
+    /// üstyazımı duruyor, o istek daha bitmedi.
+    func adopt(_ entries: [Entry]) {
+        for entry in entries where !pending.contains(entry.id) {
+            overrides[entry.id] = nil
+        }
     }
 
-    /// Ekşi'nin oy uçları form gövdesi bekliyor: `id` entry, `owner` yazar,
-    /// `rate` yön. Geri alma `rate` almıyor.
+    /// Çıkış yapıldı ya da oturum düştü.
+    func clear() {
+        overrides.removeAll()
+        pending.removeAll()
+    }
+
+    /// Sitenin kendi JS'i ile aynı istek: `/entry/vote` oy verirken,
+    /// `/entry/removevote` geri alırken; gövde ikisinde de `id`, `rate`,
+    /// `owner`.
     private func submit(
         entryId: String,
         ownerId: String,
-        target: VoteDirection?,
-        canRetry: Bool
+        rate: VoteDirection,
+        removing: Bool
     ) async throws {
-        let endpoint: EksiEndpoint = target == nil ? .removeVote : .vote
+        // Geri alırken de rate gidiyor ve basılan okun yönünü taşıyor:
+        // sunucu hangi oyun kaldırıldığını bundan biliyor.
+        let endpoint: EksiEndpoint = removing ? .removeVote : .vote
         guard let url = endpoint.url else { throw VoteError.badEndpoint }
 
-        var form = ["id": entryId, "owner": ownerId]
-        if let target { form["rate"] = String(target.rawValue) }
-        if let token = await verificationToken() {
-            form["__RequestVerificationToken"] = token
-        }
+        let form = ["id": entryId, "owner": ownerId, "rate": String(rate.rawValue)]
 
         let page = try await WebViewFetcher.shared.post(url, form: form)
-
-        let result: VoteResult
-        do {
-            result = try VoteParser.parse(json: page.html)
-        } catch {
-            // JSON yerine sayfa geldi. İki ihtimal: anahtar bayat ya da oturum
-            // düşmüş. Anahtarı bir kez tazeleyip yeniden deniyoruz; o istek de
-            // sayfa döndürürse oturum durumunu sayfadan okuyup pes ediyoruz.
-            guard canRetry else {
-                AuthSession.shared.apply(html: page.html)
-                throw error
-            }
-            token = nil
-            return try await submit(
-                entryId: entryId,
-                ownerId: ownerId,
-                target: target,
-                canRetry: false
-            )
-        }
-
+        let result = try VoteParser.parse(json: page.html)
         guard result.success else { throw VoteError.rejected(result.message) }
-    }
-
-    /// Anahtar ana sayfadan okunuyor. Bulunamazsa istek anahtarsız gidiyor:
-    /// uç anahtar istemiyorsa çalışıyor, istiyorsa sunucunun kendi metni
-    /// hatayı zaten anlatıyor.
-    private func verificationToken() async -> String? {
-        if let token { return token }
-        guard let url = URL(string: EksiEndpoint.baseURL + "/") else { return nil }
-        guard let page = try? await WebViewFetcher.shared.fetch(url) else { return nil }
-
-        // Sayfa elimize geçmişken oturum durumunu da tazeliyoruz.
-        AuthSession.shared.apply(html: page.html)
-
-        token = VoteParser.verificationToken(html: page.html)
-        if token == nil { AppLog.warn("antiforgery anahtarı bulunamadı") }
-        return token
     }
 }

@@ -2,46 +2,58 @@ import XCTest
 @testable import SukelaCore
 
 final class VoteParserTests: XCTestCase {
-    func testParsesSuccess() throws {
-        let result = try VoteParser.parse(json: #"{"Success":true,"Message":null,"Rate":5}"#)
+    /// Sitenin kendi JS'inin okuduğu şekil: sonuç `SuccessData` içinde.
+    func testParsesWrappedSuccess() throws {
+        let result = try VoteParser.parse(
+            json: #"{"SuccessData":{"Success":true,"Message":"oldu"},"LikeCount":12}"#
+        )
+        XCTAssertTrue(result.success)
+        XCTAssertEqual(result.message, "oldu")
+        XCTAssertFalse(result.alreadyVotedAnonymously)
+    }
+
+    func testParsesWrappedFailure() throws {
+        let result = try VoteParser.parse(
+            json: #"{"SuccessData":{"Success":false,"Message":"kendi entry'ne oy veremezsin"}}"#
+        )
+        XCTAssertFalse(result.success)
+        XCTAssertEqual(result.message, "kendi entry'ne oy veremezsin")
+    }
+
+    func testReadsAnonymousVoteFlag() throws {
+        let result = try VoteParser.parse(
+            json: #"{"SuccessData":{"Success":false,"Message":"kayıt ol","AlreadyVotedAnonymously":true}}"#
+        )
+        XCTAssertTrue(result.alreadyVotedAnonymously)
+    }
+
+    /// Sarmalayansız düz şekil de kabul ediliyor.
+    func testParsesFlatShape() throws {
+        let result = try VoteParser.parse(json: #"{"Success":true,"Message":null}"#)
         XCTAssertTrue(result.success)
         XCTAssertNil(result.message)
     }
 
-    func testParsesFailureWithMessage() throws {
-        let result = try VoteParser.parse(json: #"{"Success":false,"Message":"giriş yapmalısınız"}"#)
-        XCTAssertFalse(result.success)
-        XCTAssertEqual(result.message, "giriş yapmalısınız")
-    }
-
-    /// Alan adları uçtan uca aynı değil; büyük/küçük harf ayırmıyoruz.
     func testAcceptsLowercaseKeys() throws {
-        let result = try VoteParser.parse(json: #"{"success":true,"message":"tamam"}"#)
+        let result = try VoteParser.parse(json: #"{"success":true,"errormessage":"tamam"}"#)
         XCTAssertTrue(result.success)
         XCTAssertEqual(result.message, "tamam")
     }
 
-    /// Oturum düşünce Ekşi JSON yerine sayfa döndürüyor; "oldu" saymıyoruz.
+    /// Oturumsuz istekte Ekşi JSON değil, düz "nologin" döndürüyor.
+    func testDetectsNoLogin() {
+        XCTAssertThrowsError(try VoteParser.parse(json: "nologin")) { error in
+            XCTAssertEqual(error as? VoteParseError, .notLoggedIn)
+        }
+    }
+
+    /// Oturum düşünce sayfa geliyor; "oldu" saymıyoruz.
     func testRejectsHTMLResponse() {
         XCTAssertThrowsError(try VoteParser.parse(json: "<!DOCTYPE html><html></html>"))
     }
 
     func testRejectsJSONWithoutSuccessField() {
-        XCTAssertThrowsError(try VoteParser.parse(json: #"{"Rate":3}"#))
-    }
-
-    func testReadsVerificationTokenFromHiddenInput() throws {
-        let html = try Fixture.html("token")
-        XCTAssertEqual(VoteParser.verificationToken(html: html), "CfDJ8-test-token")
-    }
-
-    func testReadsVerificationTokenFromBrokenMarkup() {
-        let html = #"<input name="__RequestVerificationToken" value="abc123""#
-        XCTAssertEqual(VoteParser.verificationToken(html: html), "abc123")
-    }
-
-    func testMissingTokenIsNil() throws {
-        XCTAssertNil(VoteParser.verificationToken(html: try Fixture.html("gundem")))
+        XCTAssertThrowsError(try VoteParser.parse(json: #"{"LikeCount":3}"#))
     }
 
     func testEndpointPaths() {

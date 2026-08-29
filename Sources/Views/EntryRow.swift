@@ -111,7 +111,7 @@ struct EntryRow: View {
     /// Aynı yöne ikinci kez basmak oyu geri alıyor; rengi `VoteService`
     /// söylüyor, istek dönene kadar düğme kapalı.
     private func voteButton(_ direction: VoteDirection, symbol: String) -> some View {
-        let current = votes.direction(for: entry.id)
+        let current = votes.direction(for: entry)
         let busy = votes.isPending(entry.id)
 
         return Button {

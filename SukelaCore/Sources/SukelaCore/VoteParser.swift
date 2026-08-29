@@ -1,5 +1,4 @@
 import Foundation
-import SwiftSoup
 
 /// Entry oyu. Ham değerler Ekşi'nin `rate` alanıyla birebir.
 public enum VoteDirection: Int, Sendable, Hashable, Codable {
@@ -7,26 +6,32 @@ public enum VoteDirection: Int, Sendable, Hashable, Codable {
     case down = -1
 }
 
-/// Oy isteğinin sonucu. Ekşi düz JSON döndürüyor; alan adları PascalCase
-/// ama tek bir uçta bile değişebiliyor, o yüzden anahtarları büyük/küçük
-/// harf ayırmadan arıyoruz.
+/// Oy isteğinin sonucu.
 public struct VoteResult: Equatable, Sendable {
     public let success: Bool
-    /// Sunucunun kendi metni: "zaten oy verdiniz", "giriş yapmalısınız" vb.
+    /// Sunucunun kendi metni: "zaten oy verdiniz", "kendi entry'ne oy
+    /// veremezsin" vb.
     public let message: String?
+    /// Anonim oy verilmiş; Ekşi kayıt olmayı öneriyor.
+    public let alreadyVotedAnonymously: Bool
 
-    public init(success: Bool, message: String?) {
+    public init(success: Bool, message: String?, alreadyVotedAnonymously: Bool = false) {
         self.success = success
         self.message = message
+        self.alreadyVotedAnonymously = alreadyVotedAnonymously
     }
 }
 
-public enum VoteParseError: LocalizedError {
+public enum VoteParseError: LocalizedError, Equatable {
+    /// Ekşi oturum yoksa JSON değil, düz "nologin" yazıyor.
+    case notLoggedIn
     case notJSON
     case noSuccessField
 
     public var errorDescription: String? {
         switch self {
+        case .notLoggedIn:
+            return "Oturum düşmüş, yeniden giriş yapman gerekiyor."
         case .notJSON:
             return "Oy yanıtı JSON değil."
         case .noSuccessField:
@@ -36,55 +41,42 @@ public enum VoteParseError: LocalizedError {
 }
 
 public enum VoteParser {
-    /// Ekşi'nin oy uçlarının yanıtı: `{"Success":true,"Message":null}`.
+    /// `/entry/vote` ve `/entry/removevote` yanıtı.
     ///
-    /// `Success` yoksa yanıtı başarılı saymıyoruz: giriş düşmüşse Ekşi JSON
-    /// yerine giriş sayfasının HTML'ini döndürüyor, onu "oldu" sanmayalım.
+    /// Sitenin kendi JS'i `SuccessData.Success` / `SuccessData.Message`
+    /// okuyor; sarmalayanın dışında `LikeCount` duruyor. Eski istemcilerde
+    /// alanların düz hâli de görülüyor, ikisini de kabul ediyoruz.
+    ///
+    /// `Success` hiç yoksa yanıtı başarılı saymıyoruz: oturum düşünce Ekşi
+    /// JSON yerine sayfa döndürüyor, onu "oldu" sanmayalım.
     public static func parse(json: String) throws -> VoteResult {
-        guard let data = json.data(using: .utf8),
+        let trimmed = json.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Oturumsuz istekte gövde tırnaksız `nologin`; JSON bile değil.
+        if trimmed.replacingOccurrences(of: "\"", with: "").lowercased() == "nologin" {
+            throw VoteParseError.notLoggedIn
+        }
+
+        guard let data = trimmed.data(using: .utf8),
               let object = try? JSONSerialization.jsonObject(with: data),
-              let dictionary = object as? [String: Any] else {
+              let root = object as? [String: Any] else {
             throw VoteParseError.notJSON
         }
 
-        guard let success = bool(in: dictionary, key: "success") else {
+        var payload = root
+        if let nested = value(in: root, key: "successdata"),
+           let wrapped = nested as? [String: Any] {
+            payload = wrapped
+        }
+        guard let success = bool(in: payload, key: "success") else {
             throw VoteParseError.noSuccessField
         }
-        return VoteResult(success: success, message: string(in: dictionary, key: "message"))
-    }
 
-    /// ASP.NET antiforgery anahtarı. Sayfada gizli input olarak duruyor;
-    /// bazı şablonlarda meta etiketiyle de veriliyor.
-    public static func verificationToken(html: String) -> String? {
-        if let document = try? SwiftSoup.parse(html) {
-            let selectors = [
-                "input[name=\"__RequestVerificationToken\"]",
-                "meta[name=\"__RequestVerificationToken\"]",
-            ]
-            for selector in selectors {
-                guard let element = try? document.select(selector).first() else { continue }
-                let value = (try? element.attr("value")) ?? ""
-                let content = (try? element.attr("content")) ?? ""
-                let token = value.isEmpty ? content : value
-                if !token.isEmpty { return token }
-            }
-        }
-
-        // SwiftSoup sayfayı beğenmediyse (parça HTML, bozuk etiket) ham
-        // metinde arıyoruz; anahtar tek satırda ve tırnaklı duruyor.
-        return regexToken(in: html)
-    }
-
-    private static func regexToken(in html: String) -> String? {
-        let pattern = "__RequestVerificationToken[^>]*?(?:value|content)\\s*=\\s*\"([^\"]+)\""
-        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]),
-              let match = regex.firstMatch(
-                in: html,
-                range: NSRange(html.startIndex..., in: html)
-              ),
-              let range = Range(match.range(at: 1), in: html) else { return nil }
-        let token = String(html[range])
-        return token.isEmpty ? nil : token
+        return VoteResult(
+            success: success,
+            message: string(in: payload, key: "message")
+                ?? string(in: payload, key: "errormessage"),
+            alreadyVotedAnonymously: bool(in: payload, key: "alreadyvotedanonymously") ?? false
+        )
     }
 
     private static func value(in dictionary: [String: Any], key: String) -> Any? {

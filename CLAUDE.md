@@ -53,22 +53,27 @@ genişletirken bunu hatırla.
 ## Oylama
 
 Artı/eksi düğmeleri `EntryRow`'da, işi `VoteService` yapıyor. İstek
-`WebViewFetcher.post` ile gidiyor: `fetch()` artık GET dışında gövde de
-taşıyor, çerezi ve Referer'ı yine sayfanın kendisi koyuyor.
+`WebViewFetcher.post` ile gidiyor: sayfa içi `fetch()` artık GET dışında
+gövde de taşıyor, çerezi ve Referer'ı yine tarayıcı koyuyor.
 
-- Uçlar: `/entry/vote` (`id`, `owner`, `rate`) ve `/entry/removevote`
-  (`id`, `owner`). Aynı yöne ikinci kez basmak oyu geri alıyor.
-- Gövdeye ASP.NET antiforgery anahtarı ekleniyor; anahtar ana sayfadan
-  okunuyor (`VoteParser.verificationToken`) ve oturum boyunca saklanıyor.
-  JSON yerine HTML dönerse anahtar bir kez tazelenip istek yineleniyor.
-- **Ekşi kimin ne oy verdiğini sayfada söylemiyor.** `VoteService` yalnızca
-  bu oturumda bu uygulamadan verilen oyları tutuyor; uygulama kapanınca
-  düğmeler nötre dönüyor, sunucudaki oy duruyor. Çıkışta tablo siliniyor.
-- İstek iyimser: renk hemen değişiyor, sunucu hayır derse eski hâline dönüp
-  başlık ekranında uyarı çıkıyor.
-- Uç adresleri ve alan adları canlı siteden doğrulanamadı (Codespaces'ten
-  eksisozluk.com 403 veriyor). İlk telefon denemesinde tutmazsa bakılacak
-  yer `VoteService.submit` ve `EksiEndpoint.vote`.
+- **Verilmiş oy sayfadan okunuyor**, bizde tutulmuyor: Ekşi entry'nin
+  `<li>`'sine `data-isliked` / `data-isdisliked` yazıyor, `EntryPageParser`
+  bunu `Entry.vote`'a çeviriyor. Uygulama kapanıp açılınca oy yerinde duruyor.
+- `VoteService.overrides` yalnızca geçici üstyazım: düğmeye basınca renk
+  taze sayfayı beklemeden değişsin diye. Sayfa yeniden çekilince
+  `adopt(_:)` üstyazımı atıyor, sunucunun dediği geçerli oluyor.
+- Uçlar sitenin kendi `#title` özniteliklerinden: `/entry/vote` ve
+  `/entry/removevote`. Gövde ikisinde de `id`, `owner`, `rate`; geri
+  alırken de `rate` basılan okun yönünü taşıyor.
+- Yanıt `{"SuccessData":{"Success":…,"Message":…},"LikeCount":…}`.
+  Oturum yoksa JSON değil, düz `nologin` geliyor — `VoteParser` bunu ayrı
+  hata sayıp `AuthSession`'ı tazeliyor. Antiforgery anahtarı gerekmiyor,
+  sitenin kendi JS'i de göndermiyor.
+- Sunucu reddederse üstyazım düşüyor, başlık ekranında uyarı çıkıyor.
+
+Bu uçlar ve öznitelikler canlı siteden doğrulandı: sayfanın HTML'i
+web.archive.org'dan, oy mantığı `ekstat.com/js/ek$i-combo.js` içinden
+okundu (eksisozluk.com'un kendisi buradan 403 veriyor, ikisi vermiyor).
 
 ## Widget
 

@@ -125,12 +125,26 @@ public enum EntryPageParser {
                     contentHTML: contentHTML,
                     author: Author(id: authorId, nick: authorNick, avatarURL: avatarURL),
                     date: date,
-                    favoriteCount: favoriteCount
+                    favoriteCount: favoriteCount,
+                    vote: parseVote(in: item)
                 )
             )
         }
 
         return entries
+    }
+
+    /// Ekşi verilmiş oyu entry'nin kendi özniteliğinde söylüyor; sitenin
+    /// kendi JS'i de oy oklarını bunlara bakarak boyuyor. Girişsiz sayfada
+    /// öznitelik hiç yok, o zaman oy da yok.
+    private static func parseVote(in item: Element) -> VoteDirection? {
+        if isTrue(item, "data-isliked") { return .up }
+        if isTrue(item, "data-isdisliked") { return .down }
+        return nil
+    }
+
+    private static func isTrue(_ item: Element, _ attribute: String) -> Bool {
+        ((try? item.attr(attribute)) ?? "").lowercased() == "true"
     }
 
     private static func parseAvatarURL(in item: Element) throws -> String? {

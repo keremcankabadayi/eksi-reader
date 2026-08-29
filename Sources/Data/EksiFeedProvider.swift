@@ -92,6 +92,9 @@ struct EksiFeedProvider: FeedProviding {
         AppLog.info("başlık sayfası uçtan uca: \(started.duration(to: .now).milliseconds)")
 
         AppLog.info("\(link): \(parsed.entries.count) entry, sayfa \(parsed.currentPage)/\(parsed.pageCount)")
+        // Sayfa verilmiş oyları da taşıyor; ekrandaki geçici üstyazım artık
+        // gereksiz.
+        await VoteService.shared.adopt(parsed.entries)
         guard !parsed.entries.isEmpty else {
             AppLog.warn("\(link): entry bulunamadı")
             throw EmptyParseError(page: fetched, what: "Entry")
