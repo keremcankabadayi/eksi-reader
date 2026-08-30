@@ -76,11 +76,6 @@ struct TopicDetailView: View {
         siblingIndex != nil && siblings.count > 1
     }
 
-    /// Destede kalan okunmamış entry.
-    private var remaining: Int {
-        read.unreadCount(in: siblings)
-    }
-
     var body: some View {
         ScrollViewReader { proxy in
             Group {
@@ -278,48 +273,28 @@ struct TopicDetailView: View {
     }
 
 
-    /// Üst şerit: kaç entry kaldı, destede neredeyiz, hangi yön ne yapıyor.
+    /// Kartın üstündeki tek satır: hangi yön ne yapıyor.
+    ///
+    /// Kalan sayısı ve konum burada değil, üst bardaki ilerleme şeridinde:
+    /// aynı bilgiyi iki yerde göstermek kartın üstünü kalabalık ediyordu.
+    ///
+    /// Oklar yönü göstersin diye Label değil, elle diziliyor: solda ok
+    /// önde, sağda ok arkada.
     private var deckHeader: some View {
-        VStack(spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
-                // Ekranın başlığı bu: destede kaç entry kaldı.
-                Text("\(remaining) okunmamış entry")
-                    .font(.subheadline.weight(.semibold))
-                    .monospacedDigit()
-                    .foregroundStyle(Palette.text)
+        HStack(spacing: 4) {
+            Image(systemName: "arrow.left")
+                .foregroundStyle(Palette.decisionRead)
+            Text("okundu")
+                .foregroundStyle(Palette.decisionRead)
 
-                Spacer(minLength: 0)
+            Spacer(minLength: 0)
 
-                if let index = siblingIndex {
-                    Text("\(index + 1)/\(siblings.count)")
-                        .font(.footnote)
-                        .monospacedDigit()
-                        .foregroundStyle(Palette.meta)
-                }
-            }
-
-            // İlerleme şeridi kartın üstünde değil, üst barda duruyor:
-            // burada ince bir çizgi olarak yüklenme çubuğu sanılıyordu.
-
-            // Hangi yön ne yapıyor: kaydırmayı denemeden önce yazıyor.
-            // Oklar yönü göstersin diye Label değil, elle diziliyor:
-            // solda ok önde, sağda ok arkada.
-            HStack(spacing: 4) {
-                Image(systemName: "arrow.left")
-                    .foregroundStyle(Palette.decisionRead)
-                Text("okundu")
-                    .foregroundStyle(Palette.decisionRead)
-
-                Spacer(minLength: 0)
-
-                Text("okunmadı")
-                    .foregroundStyle(Palette.decisionUnread)
-                Image(systemName: "arrow.right")
-                    .foregroundStyle(Palette.decisionUnread)
-            }
-            .font(.caption2)
-            .foregroundStyle(Palette.meta)
+            Text("okunmadı")
+                .foregroundStyle(Palette.decisionUnread)
+            Image(systemName: "arrow.right")
+                .foregroundStyle(Palette.decisionUnread)
         }
+        .font(.caption2)
         .padding(.horizontal, 14)
         .padding(.top, 8)
         .padding(.bottom, 10)

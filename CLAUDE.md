@@ -102,8 +102,8 @@ tek gezinme kaydırma.
 
 Ekran düzeni Slack'in kart destesi:
 
-- **Ekran başlığı** kalan okunmamış entry sayısı; yanında `12/50` konumu,
-  altında yön ipucu (yeşil "okundu" solda, mavi "okunmadı" sağda).
+- **Kartın üstünde tek satır**: yön ipucu (yeşil "okundu" solda, mavi
+  "okunmadı" sağda). Kalan sayısı ve konum burada yok, üst barda.
 - **İlerleme üst barda**: başlığın yerinde `DeckProgressPill` — "debe" +
   yüzde, arkası destede ilerledikçe yeşille doluyor, son kartta %100.
   Kartın üstündeki ince şerit kaldırıldı: yüklenme çubuğu sanılıyordu.
