@@ -185,33 +185,30 @@ struct TopicDetailView: View {
         }
     }
 
-    /// Debe destesi. Üstte kalan okunmamış sayısı ve ilerleme; altında
-    /// kartlar üst üste, öndeki kart başlığını kendi başlığında ortalı
-    /// gösteriyor, gövdesinde entry duruyor. Karar kaydırmayla veriliyor,
-    /// alt gezinme barı yok.
+    /// Debe destesi. Üst barla kart arasında hiçbir şey yok: ilerleme
+    /// üst barda, başlık kartın kendi başlığında ortalı, gövdesinde entry.
+    /// Karar kaydırmayla veriliyor, alt gezinme barı yok.
     private var deck: some View {
-        VStack(spacing: 0) {
-            deckHeader
-
+        // Kartla üst bar arasında hiçbir şey yok: yön ipucu da kalktı,
+        // kaydırma zaten renkle ve damgayla kendini anlatıyor.
+        ZStack {
             // Deste: arkadaki kartlar alttan taşıyor, öndeki karar kartı.
-            ZStack {
-                ForEach(peekDepths.reversed(), id: \.self) { depth in
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(Palette.surface)
-                        .opacity(1 - 0.22 * Double(depth))
-                        // Alttan gözükmesi için: iki yandan içeri, aşağı doğru.
-                        .padding(.horizontal, CGFloat(depth) * 10)
-                        .offset(y: CGFloat(depth) * 12)
-                }
-
-                frontCard
-                    .catchUpSwipe(enabled: true, onDecide: decide(read:))
+            ForEach(peekDepths.reversed(), id: \.self) { depth in
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .fill(Palette.surface)
+                    .opacity(1 - 0.22 * Double(depth))
+                    // Alttan gözükmesi için: iki yandan içeri, aşağı doğru.
+                    .padding(.horizontal, CGFloat(depth) * 10)
+                    .offset(y: CGFloat(depth) * 12)
             }
-            .padding(.horizontal, 14)
-            .padding(.top, 4)
-            // Arkadaki kartlar alta taşıyor; onlara yer bırakıyoruz.
-            .padding(.bottom, 34)
+
+            frontCard
+                .catchUpSwipe(enabled: true, onDecide: decide(read:))
         }
+        .padding(.horizontal, 14)
+        .padding(.top, 10)
+        // Arkadaki kartlar alta taşıyor; onlara yer bırakıyoruz.
+        .padding(.bottom, 34)
     }
 
     /// Arkada kaç kart görünüyor: destede kalan entry kadar, en fazla iki.
@@ -272,33 +269,6 @@ struct TopicDetailView: View {
         .padding(.vertical, 14)
     }
 
-
-    /// Kartın üstündeki tek satır: hangi yön ne yapıyor.
-    ///
-    /// Kalan sayısı ve konum burada değil, üst bardaki ilerleme şeridinde:
-    /// aynı bilgiyi iki yerde göstermek kartın üstünü kalabalık ediyordu.
-    ///
-    /// Oklar yönü göstersin diye Label değil, elle diziliyor: solda ok
-    /// önde, sağda ok arkada.
-    private var deckHeader: some View {
-        HStack(spacing: 4) {
-            Image(systemName: "arrow.left")
-                .foregroundStyle(Palette.decisionRead)
-            Text("okundu")
-                .foregroundStyle(Palette.decisionRead)
-
-            Spacer(minLength: 0)
-
-            Text("okunmadı")
-                .foregroundStyle(Palette.decisionUnread)
-            Image(systemName: "arrow.right")
-                .foregroundStyle(Palette.decisionUnread)
-        }
-        .font(.caption2)
-        .padding(.horizontal, 14)
-        .padding(.top, 8)
-        .padding(.bottom, 10)
-    }
 
     /// Kaydırmanın kararı: okundu ya da okunmadı, sonra sıradaki entry.
     /// Deste bitmişse listeye dönüyoruz.
