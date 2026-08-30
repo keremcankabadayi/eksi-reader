@@ -100,18 +100,30 @@ deste (`CatchUpSwipe`). Slack'in "catch up" ekranı gibi tek karar var:
 Deste bitince ekran kapanıp listeye dönüyor. Alt gezinme barı yok:
 tek gezinme kaydırma.
 
-Ekran düzeni: üstte kalan okunmamış sayısı + ilerleme şeridi + yön ipucu,
-altında iki ayrı kart — başlık kartı ve entry kartı (`cardSurface()`).
-Zebra yalnız gündemin liste düzeninde kaldı.
+Ekran düzeni Slack'in kart destesi:
 
-Kaydırma 3D: kart perspektifle dönüp elden çıkarken arkasında sıradaki
-entry'nin kartı büyüyor, kararın ne olduğu damgada yazıyor (adaçayı
-"okundu", amber "okunmadı"). Ayrıntılar:
+- **Ekran başlığı** kalan okunmamış entry sayısı; yanında `12/50` konumu ve
+  ince ilerleme şeridi, altında yön ipucu (yeşil "okundu" solda, mavi
+  "okunmadı" sağda).
+- **Kart** ekranı dolduruyor: kendi başlığında ortalanmış başlık + entry
+  sayısı, ayraç, altında entry gövdesi kart içinde kayıyor.
+- **Deste** görünüyor: sıradaki iki kart öndekinin altından taşıyor
+  (`peekDepths`, her biri 10 px içeri ve 12 px aşağı). Kalan entry
+  kadarı çiziliyor, bitince arka kart kalmıyor.
 
+Kaydırma 3D ve renkli: kart perspektifle dönüp elden çıkarken yüzeyi
+karar rengine boyanıyor — `Palette.decisionRead` (#5FA87A, yeşil) okundu,
+`Palette.decisionUnread` (#4C8FD1, mavi) okunmadı. Aynı renk kenar
+çizgisinde ve damgada da var. Ayrıntılar:
+
+- Renk ve damga parmağın yolu kadar koyulaşıyor; eşiğin (genişliğin %28'i
+  ya da hızlı fiske) altında bırakılan kart yerine yaslanıyor.
+- Karta dokunulduğunda kart hafifçe küçülüyor.
 - Yatay/dikey ekseni gesture'ın ilk noktalarında bir kez seçiliyor;
-  kartlar dikey kaydırılırken deste dönmesin diye.
+  kart içi dikey kaydırılırken deste dönmesin diye.
 - Sol kenardan başlayan sağa kaydırma sistemin geri hareketi, ona
   karışmıyoruz.
+- Destede üst bar başlığı "debe" yazıyor: başlık zaten kartın içinde.
 
 Okundu kaydı `ReadTracker`'da: `UserDefaults`'ta `readTopicIDs`, en fazla
 800 `Topic.id`. **Okundu yalnız kaydırma kararıyla düşüyor**, entry'yi

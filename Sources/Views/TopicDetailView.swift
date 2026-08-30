@@ -124,14 +124,21 @@ struct TopicDetailView: View {
             // kesiyor. Ekşi başlıkları uzun; iki satıra izin veriyoruz.
             // .headline iki satırda üst bara sığmıyor, bir punto küçüğü sığıyor.
             ToolbarItem(placement: .principal) {
-                // Sarmayı kendimiz yapıyoruz: SwiftUI dar barda metni
-                // küçültüp tek satıra sıkıştırmayı tercih ediyor.
-                Text(TitleLayout.twoLines(pages.first?.title ?? topic.title))
-                    .font(.subheadline.weight(.semibold))
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.7)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
+                // Destede başlık kartın kendi başlığında ortalı duruyor;
+                // üst barda ikinci kez yazmıyoruz.
+                if isDeck {
+                    Text("debe")
+                        .font(.subheadline.weight(.semibold))
+                } else {
+                    // Sarmayı kendimiz yapıyoruz: SwiftUI dar barda metni
+                    // küçültüp tek satıra sıkıştırmayı tercih ediyor.
+                    Text(TitleLayout.twoLines(pages.first?.title ?? topic.title))
+                        .font(.subheadline.weight(.semibold))
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.7)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                }
             }
         }
         // Geri düğmesinde yalnızca ok kalsın, önceki ekranın adı yazılmasın.
@@ -180,21 +187,53 @@ struct TopicDetailView: View {
         }
     }
 
-    /// Debe destesi. Üstte kalan sayısı ve ilerleme, altında iki ayrı kart:
-    /// başlık ve entry. Karar kaydırmayla veriliyor, alt gezinme barı yok.
+    /// Debe destesi. Üstte kalan okunmamış sayısı ve ilerleme; altında
+    /// kartlar üst üste, öndeki kart başlığını kendi başlığında ortalı
+    /// gösteriyor, gövdesinde entry duruyor. Karar kaydırmayla veriliyor,
+    /// alt gezinme barı yok.
     private var deck: some View {
         VStack(spacing: 0) {
             deckHeader
 
-            ScrollView {
-                VStack(spacing: 12) {
-                    titleCard
+            // Deste: arkadaki kartlar alttan taşıyor, öndeki karar kartı.
+            ZStack {
+                ForEach(peekDepths.reversed(), id: \.self) { depth in
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(Palette.surface)
+                        .opacity(1 - 0.22 * Double(depth))
+                        // Alttan gözükmesi için: iki yandan içeri, aşağı doğru.
+                        .padding(.horizontal, CGFloat(depth) * 10)
+                        .offset(y: CGFloat(depth) * 12)
+                }
 
+                frontCard
+                    .catchUpSwipe(enabled: true, onDecide: decide(read:))
+            }
+            .padding(.horizontal, 14)
+            .padding(.top, 4)
+            // Arkadaki kartlar alta taşıyor; onlara yer bırakıyoruz.
+            .padding(.bottom, 34)
+        }
+    }
+
+    /// Arkada kaç kart görünüyor: destede kalan entry kadar, en fazla iki.
+    private var peekDepths: [Int] {
+        let left = siblings.count - ((siblingIndex ?? 0) + 1)
+        return Array(1...2).filter { $0 <= left }
+    }
+
+    /// Öndeki kart: başlığı kendi başlığında ortalı, gövdesinde entry.
+    private var frontCard: some View {
+        VStack(spacing: 0) {
+            cardHeader
+
+            Divider()
+                .overlay(Palette.meta.opacity(0.35))
+
+            ScrollView {
+                VStack(spacing: 14) {
                     if case let .failed(failure) = phase, rows.isEmpty {
                         ErrorView(failure: failure) { await load() }
-                            .padding(16)
-                            .frame(maxWidth: .infinity)
-                            .cardSurface()
                     }
 
                     ForEach(rows) { row in
@@ -205,31 +244,46 @@ struct TopicDetailView: View {
                             openPopup: { popup = $0 },
                             showFavorites: { favoritesOf = row.entry }
                         )
-                        .padding(14)
-                        .cardSurface()
                     }
                 }
-                .padding(.horizontal, 14)
-                .padding(.top, 10)
-                .padding(.bottom, 28)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 16)
             }
         }
-        .catchUpSwipe(
-            enabled: true,
-            next: nextSibling,
-            nextIsRead: nextSibling.map(read.isRead) ?? false,
-            onDecide: decide(read:)
-        )
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .cardSurface()
     }
+
+    /// Kartın kendi başlığı: ortalı başlık, altında entry sayısı.
+    private var cardHeader: some View {
+        VStack(spacing: 4) {
+            Text(pages.first?.title ?? topic.title)
+                .font(.headline)
+                .foregroundStyle(Palette.text)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !topic.entryCount.isEmpty {
+                Text("\(topic.entryCount) entry")
+                    .font(.caption2)
+                    .foregroundStyle(Palette.meta)
+            }
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+    }
+
 
     /// Üst şerit: kaç entry kaldı, destede neredeyiz, hangi yön ne yapıyor.
     private var deckHeader: some View {
         VStack(spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
-                Text("\(remaining) okunmamış")
-                    .font(.footnote.weight(.semibold))
+                // Ekranın başlığı bu: destede kaç entry kaldı.
+                Text("\(remaining) okunmamış entry")
+                    .font(.subheadline.weight(.semibold))
                     .monospacedDigit()
-                    .foregroundStyle(Palette.link)
+                    .foregroundStyle(Palette.text)
 
                 Spacer(minLength: 0)
 
@@ -261,14 +315,16 @@ struct TopicDetailView: View {
             // solda ok önde, sağda ok arkada.
             HStack(spacing: 4) {
                 Image(systemName: "arrow.left")
+                    .foregroundStyle(Palette.decisionRead)
                 Text("okundu")
-                    .foregroundStyle(Palette.sage)
+                    .foregroundStyle(Palette.decisionRead)
 
                 Spacer(minLength: 0)
 
                 Text("okunmadı")
-                    .foregroundStyle(Palette.link)
+                    .foregroundStyle(Palette.decisionUnread)
                 Image(systemName: "arrow.right")
+                    .foregroundStyle(Palette.decisionUnread)
             }
             .font(.caption2)
             .foregroundStyle(Palette.meta)
@@ -276,25 +332,6 @@ struct TopicDetailView: View {
         .padding(.horizontal, 14)
         .padding(.top, 8)
         .padding(.bottom, 10)
-    }
-
-    /// Başlık kendi kartında: entry kartından ayrı dursun.
-    private var titleCard: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(pages.first?.title ?? topic.title)
-                .font(.title3.weight(.semibold))
-                .foregroundStyle(Palette.text)
-                .fixedSize(horizontal: false, vertical: true)
-
-            if !topic.entryCount.isEmpty {
-                Text("\(topic.entryCount) entry")
-                    .font(.caption)
-                    .foregroundStyle(Palette.meta)
-            }
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(16)
-        .cardSurface()
     }
 
     /// Kaydırmanın kararı: okundu ya da okunmadı, sonra sıradaki entry.

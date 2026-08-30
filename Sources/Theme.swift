@@ -24,6 +24,12 @@ enum Palette {
     /// Yazar nick'i. Koyuda adaçayı yeşili.
     static let nick = adaptive(light: ui(0x3D_BE_8B), dark: ui(0x66_99_66))
 
+    /// Debe destesindeki karar renkleri. Kart kaydırılırken yüzeyi bu renk
+    /// kaplıyor: yeşil "okundu", mavi "okunmadı bırak". Nick yeşilinden bir
+    /// tık canlı; damgada ve kart kenarında da aynı renk kullanılıyor.
+    static let decisionRead = Color(uiColor: ui(0x5F_A8_7A))
+    static let decisionUnread = Color(uiColor: ui(0x4C_8F_D1))
+
     /// Sabit adaçayı #669966. Temaya göre değişmiyor: entry imzası,
     /// sayfalama okları ve başlıktaki entry sayısı bu renkte.
     static let sage = Color(uiColor: ui(0x66_99_66))
