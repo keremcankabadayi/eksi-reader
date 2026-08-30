@@ -16,8 +16,9 @@ struct EntryRow: View {
     @EnvironmentObject private var votes: VoteService
     @EnvironmentObject private var favorites: FavoriteService
 
-    /// Çift dokunuşta oynayan damga; kendi kendine sönüyor.
-    @State private var burst: VoteBurst?
+    /// Çift dokunuşta ve favori düğmesinde oynayan damga; kendi kendine
+    /// sönüyor.
+    @State private var burst: EntryBurst?
 
     private var entry: Entry { rendered.entry }
 
@@ -45,7 +46,7 @@ struct EntryRow: View {
         .onTapGesture(count: 2, perform: doubleTapVote)
         .overlay {
             if let burst {
-                VoteBurstView(kind: burst.kind)
+                EntryBurstView(kind: burst.kind)
                     .id(burst.id)
                     .allowsHitTesting(false)
             }
@@ -162,8 +163,11 @@ struct EntryRow: View {
         let busy = favorites.isPending(entry.id)
 
         return Button {
+            // Düğme girişsizken ve istek uçarken zaten kapalı; buraya
+            // gelindiyse damga çizilebilir.
             UIImpactFeedbackGenerator(style: state.isFavorite ? .rigid : .soft)
                 .impactOccurred()
+            flash(state.isFavorite ? .unfavorited : .favorited)
             Task { await favorites.toggle(entry: entry) }
         } label: {
             Group {
@@ -234,12 +238,17 @@ struct EntryRow: View {
         }
 
         let removing = votes.direction(for: entry) == .up
-        let mark = VoteBurst(kind: removing ? .unliked : .liked)
-        burst = mark
 
         UIImpactFeedbackGenerator(style: removing ? .rigid : .soft).impactOccurred()
+        flash(removing ? .unliked : .liked)
 
         Task { await votes.toggle(entry: entry, direction: .up) }
+    }
+
+    /// Damgayı oynatıp kendi kendine söndürüyor.
+    private func flash(_ kind: EntryBurstKind) {
+        let mark = EntryBurst(kind: kind)
+        burst = mark
         Task {
             try? await Task.sleep(nanoseconds: 850_000_000)
             // Bu arada yeniden dokunulduysa yeni damga oynuyor, ona karışma.

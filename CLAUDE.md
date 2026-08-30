@@ -85,10 +85,13 @@ gövde de taşıyor, çerezi ve Referer'ı yine tarayıcı koyuyor.
   dokunmak artı oy, oy zaten artıysa geri alıyor — yani artı oy düğmesiyle
   aynı `VoteService.toggle`. Tek dokunuş hâlâ bağlantıyı açıyor. Girişsizken
   ya da istek uçarken damga çizilmiyor, uyarıyı servis basıyor.
-- **Damga `VoteBurstView`**: oy verilince dolu kalp, geri alınınca kırık kalp;
-  ikisi de yandan 3D dönüşle gelip ~0.75 sn'de sönüyor, sonra `burst` temizleniyor.
-  Kırık kalp ayrı bir çizim değil: `EksiHeartFill` iki kez çizilip `CrackedHalf`
-  zikzağıyla kırpılıyor, yarımlar dışa devrilip düşüyor.
+- **Damga `EntryBurstView`**: oy ve favori aynı damgayı paylaşıyor
+  (`EntryRow.flash`). Verilince dolu ikon, geri alınınca kırık ikon; ikisi de
+  yandan 3D dönüşle gelip ~0.75 sn'de sönüyor, sonra `burst` temizleniyor.
+  Kırık hâl ayrı bir çizim değil: dolu ikon iki kez çizilip `CrackedHalf`
+  zikzağıyla kırpılıyor, yarımlar dışa devrilip düşüyor. Zikzak ikona göre
+  değişiyor (`EntryBurstKind.crack`): damla tepede kalpten dar, kalbin
+  zikzağı orada siluetin dışına taşıyordu.
 - **İkonlar Ekşi'nin kendi sprite'ından**: artı oy kalp (`eksico-chevron-down`
   boş, `eksico-chevron-up` dolu), eksi oy içi çizgili kutu (`eksico-dislike`
   boş — çizgi olduğu için `stroke` ile çiziliyor, `eksico-dislike-fill` dolu),
@@ -111,7 +114,9 @@ kendi ayrımının aynısı:
   damla favoride (`EksiFlame`, dolu hâli marka yeşili; boş hâli aynı
   şeklin `stroke`'u). Girişsizken sönük ve pasif, oy düğmeleri gibi.
 - **Sayı** favorileyen yazarları kartta açıyor (`FavoriteListView`).
-  Sayı sıfırken yalnızca damla çiziliyor.
+  Sayı sıfırken yalnızca damla çiziliyor; sayı nick rengiyle yazılıyor.
+- Damlaya basınca oy damgasının aynısı oynuyor (`EntryBurstView`):
+  eklenince dolu damla, çıkarılınca kırık damla.
 
 Favorileme işini `FavoriteService` yapıyor, `VoteService` ile birebir
 aynı düzen:
