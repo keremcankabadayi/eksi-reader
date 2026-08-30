@@ -70,6 +70,14 @@ gövde de taşıyor, çerezi ve Referer'ı yine tarayıcı koyuyor.
   hata sayıp `AuthSession`'ı tazeliyor. Antiforgery anahtarı gerekmiyor,
   sitenin kendi JS'i de göndermiyor.
 - Sunucu reddederse üstyazım düşüyor, başlık ekranında uyarı çıkıyor.
+- **İkonlar Ekşi'nin kendi sprite'ından**: artı oy kalp (`eksico-chevron-down`
+  boş, `eksico-chevron-up` dolu), eksi oy içi çizgili kutu (`eksico-dislike`
+  boş — çizgi olduğu için `stroke` ile çiziliyor, `eksico-dislike-fill` dolu),
+  favori sayısı damla (`eksico-drop-new`). Aralarındaki ince ayraç
+  `eksico-like-seperator`, `Capsule` ile. Hepsi `Sources/Views/EksiIcons.swift`'te
+  `Shape` olarak; o dosya **üretilmiş**, elle düzenleme:
+  `node tools/svg-to-shape.mjs <ekşi-sayfası.html> Sources/Views/EksiIcons.swift`.
+  Sprite sayfanın başında gizli SVG olarak duruyor, arşiv kopyası yeter.
 
 Bu uçlar ve öznitelikler canlı siteden doğrulandı: sayfanın HTML'i
 web.archive.org'dan, oy mantığı `ekstat.com/js/ek$i-combo.js` içinden

@@ -68,7 +68,7 @@ struct EntryRow: View {
                     // Label ikon ile sayı arasına geniş bir boşluk koyuyor;
                     // ikiliyi kendimiz diziyoruz.
                     HStack(spacing: 3) {
-                        FavoriteFlame()
+                        EksiFlame()
                             .frame(width: 11, height: 11)
                         Text("\(entry.favoriteCount)")
                     }
@@ -101,10 +101,16 @@ struct EntryRow: View {
                 Image(systemName: "ellipsis")
             }
 
-            // Oy vermek Ekşi'de giriş istiyor: girişsizken oklar duruyor
-            // ama sönük ve pasif.
-            voteButton(.up, symbol: "arrow.up")
-            voteButton(.down, symbol: "arrow.down")
+            // Oy vermek Ekşi'de giriş istiyor: girişsizken ikonlar duruyor
+            // ama sönük ve pasif. Ekşi'deki gibi ikisi bitişik, aralarında
+            // ince ayraç (`eksico-like-seperator`: 1x16, rx 0.5).
+            HStack(spacing: 9) {
+                voteButton(.up)
+                Capsule()
+                    .frame(width: 1, height: 14)
+                    .foregroundStyle(Palette.link.opacity(0.3))
+                voteButton(.down)
+            }
 
             if let permalink {
                 ShareLink(item: permalink) {
@@ -119,17 +125,36 @@ struct EntryRow: View {
 
     /// Aynı yöne ikinci kez basmak oyu geri alıyor; rengi `VoteService`
     /// söylüyor, istek dönene kadar düğme kapalı.
-    private func voteButton(_ direction: VoteDirection, symbol: String) -> some View {
+    private func voteButton(_ direction: VoteDirection) -> some View {
         let current = votes.direction(for: entry)
         let busy = votes.isPending(entry.id)
 
         return Button {
             Task { await votes.toggle(entry: entry, direction: direction) }
         } label: {
-            Image(systemName: current == direction ? "\(symbol).circle.fill" : symbol)
+            voteIcon(direction, filled: current == direction)
+                .frame(width: 16, height: 16)
         }
         .disabled(!auth.isLoggedIn || busy)
         .foregroundStyle(voteTint(direction, current: current, busy: busy))
+    }
+
+    /// Ekşi'nin kendi ikonları: artı oy kalp, eksi oy içi çizgili kutu.
+    /// Oy verilince ikisi de dolu hâline geçiyor.
+    @ViewBuilder
+    private func voteIcon(_ direction: VoteDirection, filled: Bool) -> some View {
+        switch (direction, filled) {
+        case (.up, false):
+            EksiHeart()
+        case (.up, true):
+            EksiHeartFill()
+        case (.down, false):
+            // Kutu ve içindeki çizgi kapalı alan değil, çizgi: stroke gerekiyor.
+            EksiDislike()
+                .stroke(style: StrokeStyle(lineWidth: 1.4, lineCap: .round, lineJoin: .round))
+        case (.down, true):
+            EksiDislikeFill()
+        }
     }
 
     private func voteTint(_ direction: VoteDirection, current: VoteDirection?, busy: Bool) -> Color {
