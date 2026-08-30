@@ -86,7 +86,8 @@ struct EntryRow: View {
                     Button(action: showFavorites) {
                         Text("\(favoriteState.count)")
                             .font(.caption)
-                            .foregroundStyle(Palette.meta)
+                            // İmzadaki nick ile aynı renk.
+                            .foregroundStyle(Palette.nick)
                             .monospacedDigit()
                             // Sayı tek karakter olduğunda dokunulacak alan
                             // fazla küçülüyor.
