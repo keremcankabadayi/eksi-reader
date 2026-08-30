@@ -102,9 +102,11 @@ tek gezinme kaydırma.
 
 Ekran düzeni Slack'in kart destesi:
 
-- **Ekran başlığı** kalan okunmamış entry sayısı; yanında `12/50` konumu ve
-  ince ilerleme şeridi, altında yön ipucu (yeşil "okundu" solda, mavi
-  "okunmadı" sağda).
+- **Ekran başlığı** kalan okunmamış entry sayısı; yanında `12/50` konumu,
+  altında yön ipucu (yeşil "okundu" solda, mavi "okunmadı" sağda).
+- **İlerleme üst barda**: başlığın yerinde `DeckProgressPill` — "debe" +
+  yüzde, arkası destede ilerledikçe yeşille doluyor, son kartta %100.
+  Kartın üstündeki ince şerit kaldırıldı: yüklenme çubuğu sanılıyordu.
 - **Kart** ekranı dolduruyor: kendi başlığında ortalanmış başlık + entry
   sayısı, ayraç, altında entry gövdesi kart içinde kayıyor.
 - **Deste** görünüyor: sıradaki iki kart öndekinin altından taşıyor
@@ -123,7 +125,8 @@ karar rengine boyanıyor — `Palette.decisionRead` (#5FA87A, yeşil) okundu,
   kart içi dikey kaydırılırken deste dönmesin diye.
 - Sol kenardan başlayan sağa kaydırma sistemin geri hareketi, ona
   karışmıyoruz.
-- Destede üst bar başlığı "debe" yazıyor: başlık zaten kartın içinde.
+- Destede üst barda başlık yerine ilerleme şeridi var: başlık zaten
+  kartın içinde.
 
 Okundu kaydı `ReadTracker`'da: `UserDefaults`'ta `readTopicIDs`, en fazla
 800 `Topic.id`. **Okundu yalnız kaydırma kararıyla düşüyor**, entry'yi

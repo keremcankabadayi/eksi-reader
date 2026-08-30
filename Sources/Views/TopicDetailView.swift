@@ -125,10 +125,13 @@ struct TopicDetailView: View {
             // .headline iki satırda üst bara sığmıyor, bir punto küçüğü sığıyor.
             ToolbarItem(placement: .principal) {
                 // Destede başlık kartın kendi başlığında ortalı duruyor;
-                // üst barda ikinci kez yazmıyoruz.
+                // üst barda ikinci kez yazmıyoruz. Onun yerine "debe"
+                // yazısının arkası destede ilerledikçe yeşille doluyor.
                 if isDeck {
-                    Text("debe")
-                        .font(.subheadline.weight(.semibold))
+                    DeckProgressPill(
+                        current: (siblingIndex ?? 0) + 1,
+                        total: siblings.count
+                    )
                 } else {
                     // Sarmayı kendimiz yapıyoruz: SwiftUI dar barda metni
                     // küçültüp tek satıra sıkıştırmayı tercih ediyor.
@@ -295,20 +298,8 @@ struct TopicDetailView: View {
                 }
             }
 
-            // İnce ilerleme şeridi: destenin neresindeyiz.
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(Palette.meta.opacity(0.25))
-                    Capsule()
-                        .fill(Palette.link)
-                        .frame(
-                            width: geo.size.width
-                                * CGFloat((siblingIndex ?? 0) + 1)
-                                / CGFloat(max(siblings.count, 1))
-                        )
-                }
-            }
-            .frame(height: 2)
+            // İlerleme şeridi kartın üstünde değil, üst barda duruyor:
+            // burada ince bir çizgi olarak yüklenme çubuğu sanılıyordu.
 
             // Hangi yön ne yapıyor: kaydırmayı denemeden önce yazıyor.
             // Oklar yönü göstersin diye Label değil, elle diziliyor:
@@ -491,6 +482,50 @@ struct TopicDetailView: View {
 }
 
 /// Başlığın üstünde kalan eski entry'leri yükleyen satır.
+/// Üst bardaki deste ilerlemesi.
+///
+/// Kartın üstünde ince bir şerit vardı, sayfa yükleniyor sanılıyordu.
+/// Gösterge artık üst barda başlığın yerinde: "debe" yazısının arkası
+/// ilerledikçe yeşille doluyor, son kartta %100 oluyor.
+private struct DeckProgressPill: View {
+    let current: Int
+    let total: Int
+
+    private var ratio: Double {
+        guard total > 0 else { return 0 }
+        return min(1, max(0, Double(current) / Double(total)))
+    }
+
+    var body: some View {
+        ZStack {
+            // Boş kısım: dolu yeşilin nereye kadar geldiği ayrışsın diye
+            // üst barın kendi renginden koyu.
+            Capsule().fill(Color.black.opacity(0.28))
+
+            GeometryReader { geo in
+                Capsule()
+                    .fill(Palette.decisionRead)
+                    .frame(width: geo.size.width * ratio)
+            }
+
+            HStack(spacing: 6) {
+                Text("debe")
+                Text("%\(Int((ratio * 100).rounded()))")
+                    .monospacedDigit()
+                    .opacity(0.9)
+            }
+            .font(.caption.weight(.semibold))
+            // Üst bar içeriği her iki temada da beyaz.
+            .foregroundStyle(Color.white)
+        }
+        .frame(width: 150, height: 24)
+        .clipShape(Capsule())
+        // Karar verilip sıradaki karta geçilince şerit akarak büyüsün.
+        .animation(.easeOut(duration: 0.3), value: ratio)
+        .accessibilityLabel("debe ilerlemesi yüzde \(Int((ratio * 100).rounded()))")
+    }
+}
+
 private struct PreviousEntriesButton: View {
     let label: String
     let loading: Bool
