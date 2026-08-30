@@ -66,12 +66,20 @@ struct EntryRow: View {
                 Text(entry.author.nick)
                     .foregroundStyle(Palette.nick)
             }
-            .font(.caption2)
+            .font(.system(size: signatureSize))
             .multilineTextAlignment(.trailing)
 
-            AvatarView(url: entry.author.avatarURL)
+            AvatarView(url: entry.author.avatarURL, size: avatarSize)
         }
     }
+
+    /// İmza ve avatar gövdeyle birlikte büyüsün: ayarlardaki punto yalnız
+    /// gövdeye gidince tarih, nick ve avatar orantısız küçük kalıyordu.
+    /// Oranlar varsayılan 16 puntoda bugünkü boyutları veriyor
+    /// (caption2 ≈ 11 punto, avatar 26 punto).
+    private var signatureSize: CGFloat { CGFloat(fontSize) * 0.69 }
+
+    private var avatarSize: CGFloat { CGFloat(fontSize) * 1.625 }
 
     private var actions: some View {
         HStack(spacing: 22) {
@@ -249,8 +257,8 @@ struct EntryRow: View {
 /// Yazar avatarı. Yoksa ya da yüklenemezse yerine daire çiziliyor.
 private struct AvatarView: View {
     let url: String?
-
-    private static let size: CGFloat = 26
+    /// Entry puntosuyla birlikte büyüyor.
+    let size: CGFloat
 
     var body: some View {
         Group {
@@ -264,7 +272,7 @@ private struct AvatarView: View {
                 placeholder
             }
         }
-        .frame(width: Self.size, height: Self.size)
+        .frame(width: size, height: size)
         .clipShape(Circle())
     }
 
@@ -273,7 +281,7 @@ private struct AvatarView: View {
             .fill(Color.secondary.opacity(0.2))
             .overlay(
                 Image(systemName: "person.fill")
-                    .font(.system(size: Self.size * 0.5))
+                    .font(.system(size: size * 0.5))
                     .foregroundStyle(.secondary)
             )
     }
