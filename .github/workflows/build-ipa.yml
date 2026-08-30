@@ -32,7 +32,11 @@ jobs:
   build:
     runs-on: macos-15
     steps:
+      # Surum notu icin gecmis gerekiyor: bir onceki VERSION bump'indan
+      # buyana gelen commit'ler taraniyor, sig checkout'ta o gecmis yok.
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: DIST_TOKEN var mi
         run: |
@@ -60,11 +64,34 @@ jobs:
           # build ayni "1.0.0" gorunup update cikmiyordu. Yama numarasini
           # build numarasina esitliyoruz: 1.0.0 + build 15 -> 1.0.15.
           VERSION="${BASE%.*}.${BUILD}"
+
+          # Surum notu. Tetikleyen commit her zaman "chore: surum 1.0.x"
+          # oldugu icin onu yazmak bir sey anlatmiyordu; onceki VERSION
+          # bump'indan buyana gelen feat/fix commit'lerini ozetliyoruz.
+          # En son VERSION bump'i push tetiklediyse HEAD'in kendisi, elle
+          # tetiklendiyse daha eski bir commit: HEAD ise bir oncekini al.
+          HEAD_SHA="$(git rev-parse HEAD)"
+          PREV="$(git log --format=%H -- VERSION | grep -v "^${HEAD_SHA}$" | head -n 1)"
+          if [ -z "$PREV" ]; then
+            RANGE="HEAD"
+          else
+            RANGE="${PREV}..HEAD"
+          fi
+          SUMMARY="$(
+            git log --no-merges --format=%s "$RANGE" \
+              | grep -E '^(feat|fix)(\([^)]*\))?: ' \
+              | sed -E 's/^(feat|fix)(\([^)]*\))?: //' \
+              | awk '!seen[$0]++' \
+              | head -n 5 \
+              | awk 'NR>1 { printf "; " } { printf "%s", $0 } END { if (NR) print "" }'
+          )"
+
           {
             echo "version=$VERSION"
             echo "build=$BUILD"
             echo "tag=v${VERSION}"
             echo "date=$(date -u +%Y-%m-%d)"
+            echo "summary=$SUMMARY"
           } >> "$GITHUB_OUTPUT"
 
       - name: Imzasiz IPA derle
@@ -122,23 +149,29 @@ jobs:
           TAG: ${{ steps.meta.outputs.tag }}
           TITLE: "Sukela Lite ${{ steps.meta.outputs.version }} (${{ steps.meta.outputs.build }})"
           SHA: ${{ github.sha }}
+          SUMMARY: ${{ steps.meta.outputs.summary }}
         run: |
+          BODY="Imzasiz build, SideStore ile kurulur. Kaynak commit: $SHA"
+          if [ -n "$SUMMARY" ]; then
+            BODY="Bu surumde: $SUMMARY"$'\n\n'"$BODY"
+          fi
           if gh release view "$TAG" --repo "$DIST_REPO" >/dev/null 2>&1; then
             gh release upload "$TAG" dist/SukelaLite.ipa --repo "$DIST_REPO" --clobber
           else
             gh release create "$TAG" dist/SukelaLite.ipa \
               --repo "$DIST_REPO" \
               --title "$TITLE" \
-              --notes "Imzasiz build, SideStore ile kurulur. Kaynak commit: $SHA"
+              --notes "$BODY"
           fi
 
       - name: SideStore kaynagini uret
         env:
-          COMMIT_MSG: ${{ github.event.head_commit.message }}
+          SUMMARY: ${{ steps.meta.outputs.summary }}
         run: |
+          # SideStore'da gorunen not: build numarasi + yapilan islerin ozeti.
           NOTES="Build ${{ steps.meta.outputs.build }}"
-          if [ -n "$COMMIT_MSG" ]; then
-            NOTES="$NOTES - $(printf '%s' "$COMMIT_MSG" | head -n 1)"
+          if [ -n "$SUMMARY" ]; then
+            NOTES="$NOTES - $SUMMARY"
           fi
           # --repo dist reposu: manifestteki tum URL'ler oraya isaret etmeli.
           node tools/update-source.mjs \
