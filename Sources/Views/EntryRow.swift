@@ -65,10 +65,11 @@ struct EntryRow: View {
             if entry.favoriteCount > 0 {
                 // Dokununca favorileyenler açılıyor, Ekşi'deki gibi.
                 Button(action: showFavorites) {
-                    // Label kalp ile sayı arasına geniş bir boşluk koyuyor;
+                    // Label ikon ile sayı arasına geniş bir boşluk koyuyor;
                     // ikiliyi kendimiz diziyoruz.
                     HStack(spacing: 3) {
-                        Image(systemName: "heart")
+                        FavoriteFlame()
+                            .frame(width: 11, height: 11)
                         Text("\(entry.favoriteCount)")
                     }
                     .font(.caption)
