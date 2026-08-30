@@ -86,9 +86,9 @@ struct TopicListView: View {
                         TopicRow(
                             topic: topic,
                             isEven: index % 2 == 0,
-                            // Okundu kaydı debe için tutuluyor: gündemde
-                            // satır bir başlık, "okudum" demek anlamsız.
-                            isRead: feed == .debe && read.isRead(topic)
+                            // Okundu kaydı yalnız debe'de: gündemde nil
+                            // geçiyor, satırda okundu izi hiç çıkmıyor.
+                            isRead: feed == .debe ? read.isRead(topic) : nil
                         )
                     }
                     .listRowBackground(TopicRow.background(isEven: index % 2 == 0))

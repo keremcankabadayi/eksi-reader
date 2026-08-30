@@ -8,26 +8,30 @@ import SukelaCore
 struct TopicRow: View {
     let topic: Topic
     let isEven: Bool
-    /// Debe'de açılıp okunmuş entry. Okunmamışlar öne çıksın diye okunan
-    /// satır soluyor; gündemde her satır okunmamış sayılıyor.
-    var isRead: Bool = false
+    /// Okundu durumu. `nil` = bu akışta takip yok: nokta hiç çizilmiyor,
+    /// satır solmuyor. Yalnız debe'de dolu geliyor; gündemde satır bir
+    /// başlık, "okudum" demek anlamsız.
+    var isRead: Bool?
 
     @AppStorage("entryFontSize") private var fontSize: Double = 16
 
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: 8) {
             // Okunmamışın solunda nokta: Slack'teki okunmamış kanal gibi,
-            // listeye bakınca kaldığın yer belli oluyor.
-            Circle()
-                .fill(isRead ? Color.clear : Palette.link)
-                .frame(width: 6, height: 6)
-                // Dairenin taban çizgisi yok; hizayı elle veriyoruz, yoksa
-                // metnin taban çizgisine oturup satırdan taşıyor.
-                .alignmentGuide(.firstTextBaseline) { $0[.bottom] + 1 }
+            // listeye bakınca kaldığın yer belli oluyor. Takip kapalıyken
+            // (gündem) nokta yok, satır da eskisi gibi.
+            if let isRead {
+                Circle()
+                    .fill(isRead ? Color.clear : Palette.link)
+                    .frame(width: 6, height: 6)
+                    // Dairenin taban çizgisi yok; hizayı elle veriyoruz,
+                    // yoksa metnin taban çizgisine oturup satırdan taşıyor.
+                    .alignmentGuide(.firstTextBaseline) { $0[.bottom] + 1 }
+            }
 
             Text(topic.title)
                 .font(.system(size: fontSize))
-                .foregroundStyle(isRead ? Palette.meta : Palette.text)
+                .foregroundStyle(isRead == true ? Palette.meta : Palette.text)
                 .lineLimit(2)
 
             Spacer(minLength: 0)
