@@ -70,6 +70,14 @@ gövde de taşıyor, çerezi ve Referer'ı yine tarayıcı koyuyor.
   hata sayıp `AuthSession`'ı tazeliyor. Antiforgery anahtarı gerekmiyor,
   sitenin kendi JS'i de göndermiyor.
 - Sunucu reddederse üstyazım düşüyor, başlık ekranında uyarı çıkıyor.
+- **Çift dokunuş artı oy veriyor** (`EntryRow.doubleTapVote`): gövdeye iki kez
+  dokunmak artı oy, oy zaten artıysa geri alıyor — yani artı oy düğmesiyle
+  aynı `VoteService.toggle`. Tek dokunuş hâlâ bağlantıyı açıyor. Girişsizken
+  ya da istek uçarken damga çizilmiyor, uyarıyı servis basıyor.
+- **Damga `VoteBurstView`**: oy verilince dolu kalp, geri alınınca kırık kalp;
+  ikisi de yandan 3D dönüşle gelip ~0.75 sn'de sönüyor, sonra `burst` temizleniyor.
+  Kırık kalp ayrı bir çizim değil: `EksiHeartFill` iki kez çizilip `CrackedHalf`
+  zikzağıyla kırpılıyor, yarımlar dışa devrilip düşüyor.
 - **İkonlar Ekşi'nin kendi sprite'ından**: artı oy kalp (`eksico-chevron-down`
   boş, `eksico-chevron-up` dolu), eksi oy içi çizgili kutu (`eksico-dislike`
   boş — çizgi olduğu için `stroke` ile çiziliyor, `eksico-dislike-fill` dolu),

@@ -15,6 +15,9 @@ struct EntryRow: View {
     @EnvironmentObject private var auth: AuthSession
     @EnvironmentObject private var votes: VoteService
 
+    /// Çift dokunuşta oynayan damga; kendi kendine sönüyor.
+    @State private var burst: VoteBurst?
+
     private var entry: Entry { rendered.entry }
 
     private var permalink: URL? {
@@ -35,6 +38,17 @@ struct EntryRow: View {
             actions
         }
         .padding(.vertical, 4)
+        // Instagram'daki gibi: gövdeye çift dokunmak artı oy veriyor,
+        // ikinci çift dokunuş geri alıyor. Tek dokunuş hâlâ bağlantıları
+        // açıyor, `count: 2` onun önüne geçmiyor.
+        .onTapGesture(count: 2, perform: doubleTapVote)
+        .overlay {
+            if let burst {
+                VoteBurstView(kind: burst.kind)
+                    .id(burst.id)
+                    .allowsHitTesting(false)
+            }
+        }
     }
 
     private var signature: some View {
@@ -154,6 +168,29 @@ struct EntryRow: View {
                 .stroke(style: StrokeStyle(lineWidth: 1.4, lineCap: .round, lineJoin: .round))
         case (.down, true):
             EksiDislikeFill()
+        }
+    }
+
+    /// Çift dokunuş = artı oy düğmesi. Oy zaten artıysa geri alıyor,
+    /// damga da ona göre: dolu kalp ya da kırık kalp.
+    private func doubleTapVote() {
+        // Girişsizken ya da istek uçarken damga yok; uyarıyı servis basıyor.
+        guard auth.isLoggedIn, !votes.isPending(entry.id) else {
+            Task { await votes.toggle(entry: entry, direction: .up) }
+            return
+        }
+
+        let removing = votes.direction(for: entry) == .up
+        let mark = VoteBurst(kind: removing ? .unliked : .liked)
+        burst = mark
+
+        UIImpactFeedbackGenerator(style: removing ? .rigid : .soft).impactOccurred()
+
+        Task { await votes.toggle(entry: entry, direction: .up) }
+        Task {
+            try? await Task.sleep(nanoseconds: 850_000_000)
+            // Bu arada yeniden dokunulduysa yeni damga oynuyor, ona karışma.
+            if burst?.id == mark.id { burst = nil }
         }
     }
 
