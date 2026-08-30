@@ -7,6 +7,9 @@ struct TopicListView: View {
     var openMenu: (() -> Void)? = nil
     var provider: FeedProviding = EksiFeedProvider.shared
 
+    /// Okunmuş entry kaydı; debe satırlarında nokta bunun için.
+    @EnvironmentObject private var read: ReadTracker
+
     @State private var topics: [Topic] = []
     @State private var phase: LoadPhase = .idle
     /// Ekranda önbellekten gelen liste dururken ağdan taze liste bekleniyor.
@@ -28,6 +31,11 @@ struct TopicListView: View {
     private var visibleTopics: [Topic] {
         guard !trimmedQuery.isEmpty else { return topics }
         return topics.filter { $0.title.localizedCaseInsensitiveContains(trimmedQuery) }
+    }
+
+    /// Debe'de okunmamış entry sayısı.
+    private var unread: Int {
+        read.unreadCount(in: topics)
     }
 
     /// "ekşi'de ara" satırının gittiği yer: sitenin kendi arama yolu.
@@ -75,7 +83,13 @@ struct TopicListView: View {
                         NavigationLink(value: topic) { EmptyView() }
                             .opacity(0)
 
-                        TopicRow(topic: topic, isEven: index % 2 == 0)
+                        TopicRow(
+                            topic: topic,
+                            isEven: index % 2 == 0,
+                            // Okundu kaydı debe için tutuluyor: gündemde
+                            // satır bir başlık, "okudum" demek anlamsız.
+                            isRead: feed == .debe && read.isRead(topic)
+                        )
                     }
                     .listRowBackground(TopicRow.background(isEven: index % 2 == 0))
                 }
@@ -97,6 +111,19 @@ struct TopicListView: View {
             }
             ToolbarItem(placement: .navigationBarTrailing) {
                 HStack(spacing: 14) {
+                    // Debe'de kaç entry kaldı. Slack'in "catch up"ı gibi:
+                    // liste bitene kadar sayı düşüyor.
+                    if feed == .debe, unread > 0 {
+                        Text("\(unread)")
+                            .font(.caption.weight(.semibold))
+                            .monospacedDigit()
+                            .foregroundStyle(Color.black)
+                            .padding(.horizontal, 7)
+                            .padding(.vertical, 2)
+                            .background(Capsule().fill(Palette.link))
+                            .accessibilityLabel("\(unread) entry okunmadı")
+                    }
+
                     // Önbellekteki liste dururken tazesi geliyor; sessizce
                     // olmasın. Üst bar dolu renkte, gösterge beyaz.
                     if refreshing && !topics.isEmpty {
@@ -171,4 +198,5 @@ struct TopicListView: View {
     NavigationStack {
         TopicListView(feed: .gundem, provider: MockFeedProvider.shared)
     }
+    .environmentObject(ReadTracker.shared)
 }

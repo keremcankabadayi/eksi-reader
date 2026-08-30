@@ -35,6 +35,8 @@ struct SukelaLiteApp: App {
             .environmentObject(AuthSession.shared)
             // Oy düğmeleri bütün entry satırlarında aynı tabloya bakıyor.
             .environmentObject(VoteService.shared)
+            // Okunmuş entry'ler: liste ve kaydırma destesi aynı kaydı okuyor.
+            .environmentObject(ReadTracker.shared)
             // Cloudflare doğrulamasını ilk istek beklemesin diye
             // uygulama açılır açılmaz arka planda başlatıyoruz.
             .task {

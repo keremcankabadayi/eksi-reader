@@ -58,4 +58,5 @@ struct RootView: View {
 #Preview {
     RootView()
         .environmentObject(AuthSession.shared)
+        .environmentObject(ReadTracker.shared)
 }

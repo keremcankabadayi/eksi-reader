@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     @AppStorage("entryFontSize") private var fontSize: Double = 16
     @AppStorage(AppTheme.storageKey) private var theme: AppTheme = .light
+    @EnvironmentObject private var read: ReadTracker
 
     var body: some View {
         Form {
@@ -29,6 +30,18 @@ struct SettingsView: View {
                         .font(.system(size: fontSize))
                         .foregroundStyle(.secondary)
                 }
+
+                // Debe listesindeki okundu noktaları buradan sıfırlanıyor;
+                // liste her gün değişse de kayıt kendiliğinden silinmiyor.
+                Button(role: .destructive) {
+                    read.clear()
+                } label: {
+                    Label(
+                        "okundu işaretlerini sıfırla (\(read.ids.count))",
+                        systemImage: "arrow.counterclockwise"
+                    )
+                }
+                .disabled(read.ids.isEmpty)
             }
 
             Section("teşhis") {
@@ -64,4 +77,5 @@ struct SettingsView: View {
     NavigationStack {
         SettingsView()
     }
+    .environmentObject(ReadTracker.shared)
 }

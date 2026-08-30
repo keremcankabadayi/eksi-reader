@@ -46,6 +46,10 @@ struct TopicDetailView: View {
     /// zaten eski hâline dönüyor.
     @EnvironmentObject private var votes: VoteService
 
+    /// Okundu kaydı: açılan debe entry'si işaretleniyor, kaydırma destesi
+    /// de sıradakinin okunup okunmadığını buradan öğreniyor.
+    @EnvironmentObject private var read: ReadTracker
+
     /// Sayfalama gerektiren başlıkta son yüklenen sayfa; tek sayfalıkta nil.
     private var pager: TopicPage? {
         guard let last = pages.last, last.pageCount > 1 else { return nil }
@@ -127,13 +131,17 @@ struct TopicDetailView: View {
             // altına kendi rengimizi koyuyoruz.
             .scrollContentBackground(.hidden)
             .background(Palette.base)
-            // Debe'de yatay kaydırma komşu entry'ye geçiriyor. `simultaneous`:
-            // listenin kendi dikey kaydırması çalışmaya devam etsin.
-            .simultaneousGesture(
-                DragGesture(minimumDistance: 24, coordinateSpace: .local)
-                    .onEnded { drag in
-                        switchSibling(with: drag)
-                    }
+            // Debe'de yatay kaydırma komşu entry'ye geçiriyor; hareketin
+            // kendisi 3D: sayfa dönerek çıkıyor, gelecek entry kenardan
+            // görünüyor.
+            .siblingSwipe(
+                enabled: showsSiblingBar,
+                previous: previousSibling,
+                next: nextSibling,
+                position: siblingIndex.map { $0 + 1 },
+                total: siblings.count,
+                isRead: read.isRead(_:),
+                onSwitch: show(_:)
             )
             .overlay {
                 if phase == .loading, rows.isEmpty {
@@ -229,26 +237,11 @@ struct TopicDetailView: View {
         }
         // id: topic.id — komşuya geçince yeniden koşuyor.
         .task(id: topic.id) {
+            // Ekrana gelen entry okundu sayılıyor: debe listesinde noktası
+            // sönüyor, üstteki sayaç düşüyor.
+            if !siblings.isEmpty { read.markRead(topic) }
             guard pages.isEmpty else { return }
             await load()
-        }
-    }
-
-    /// Yatay kaydırma komşu entry'ye geçiriyor; dikey kaydırma tetiklemiyor.
-    private func switchSibling(with drag: DragGesture.Value) {
-        let dx = drag.translation.width
-        let dy = drag.translation.height
-        // Yatay bileşen hem yeterince uzun hem de dikeyin iki katı olmalı.
-        guard abs(dx) > 60, abs(dx) > abs(dy) * 2 else { return }
-
-        if dx < 0 {
-            guard let next = nextSibling else { return }
-            show(next)
-        } else {
-            // Sol kenardan başlayan sağa kaydırma sistemin geri hareketi;
-            // ona karışmıyoruz.
-            guard drag.startLocation.x > 40, let previous = previousSibling else { return }
-            show(previous)
         }
     }
 
@@ -472,4 +465,5 @@ private struct PagerBar: View {
     }
     .environmentObject(AuthSession.shared)
     .environmentObject(VoteService.shared)
+    .environmentObject(ReadTracker.shared)
 }
