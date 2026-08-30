@@ -90,26 +90,34 @@ Favorileme (`/entry/favla`, `/entry/favlama`) henüz yok, yalnızca okuma var.
 
 ## Debe destesi ve okundu takibi
 
-Debe'de her satır tek bir entry, o yüzden başlık ekranı bir deste gibi
-davranıyor (`SiblingSwipe`): sola kaydırmak sıradaki, sağa kaydırmak önceki
-entry'ye geçiriyor. Hareket 3D — sayfa perspektifle dönüp kaçarken arkasında
-gelecek entry'nin kartı büyüyor; amaç kaydırmanın var olduğunu tamamlamadan
-sezdirmek. Slack'in "catch up" ekranındaki mantık: yığını teker teker geç,
-nerede olduğunu üstteki ince şerit söylesin.
+Debe'de her satır tek bir entry, o yüzden başlık ekranı liste değil bir
+deste (`CatchUpSwipe`). Slack'in "catch up" ekranı gibi tek karar var:
 
-- Yatay/dikey ekseni gesture'ın ilk noktalarında bir kez seçiliyor; liste
-  dikey kaydırılırken sayfa dönmesin diye.
+- **sağdan sola** (kartı sola at) → okundu
+- **soldan sağa** (kartı sağa at) → okunmadı bırak
+
+İki yön de sıradaki entry'ye geçiriyor, fark yalnızca okundu kaydında.
+Deste bitince ekran kapanıp listeye dönüyor. Alt gezinme barı yok:
+tek gezinme kaydırma.
+
+Ekran düzeni: üstte kalan okunmamış sayısı + ilerleme şeridi + yön ipucu,
+altında iki ayrı kart — başlık kartı ve entry kartı (`cardSurface()`).
+Zebra yalnız gündemin liste düzeninde kaldı.
+
+Kaydırma 3D: kart perspektifle dönüp elden çıkarken arkasında sıradaki
+entry'nin kartı büyüyor, kararın ne olduğu damgada yazıyor (adaçayı
+"okundu", amber "okunmadı"). Ayrıntılar:
+
+- Yatay/dikey ekseni gesture'ın ilk noktalarında bir kez seçiliyor;
+  kartlar dikey kaydırılırken deste dönmesin diye.
 - Sol kenardan başlayan sağa kaydırma sistemin geri hareketi, ona
   karışmıyoruz.
-- O yönde entry yoksa yol dörtte bire iniyor (lastik) ve arka kart
-  "listenin sonu" diyor.
-- `SiblingBar` duruyor: kaydırmanın düğmeli karşılığı.
 
-Okundu kaydı `ReadTracker`'da: `UserDefaults`'ta `readTopicIDs`, en fazla 800
-`Topic.id`. Entry ekrana gelince okundu sayılıyor (yalnız komşulu, yani debe
-akışında). Liste satırında okunmamışın solunda nokta, okunmuş satır soluk;
-üst barda kalan sayı duruyor. Ayarlardan sıfırlanıyor. App Group'a
-yazılmıyor: widget'ın bu bilgiye ihtiyacı yok.
+Okundu kaydı `ReadTracker`'da: `UserDefaults`'ta `readTopicIDs`, en fazla
+800 `Topic.id`. **Okundu yalnız kaydırma kararıyla düşüyor**, entry'yi
+açmak yetmiyor. Debe listesinde okunmamışın solunda nokta, okunmuş satır
+soluk, üst barda kalan sayı; gündemde bu izin hiçbiri yok (`TopicRow.isRead`
+nil geçiyor). Ayarlardan sıfırlanıyor. App Group'a yazılmıyor.
 
 ## Widget
 

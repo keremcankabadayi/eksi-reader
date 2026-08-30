@@ -50,6 +50,9 @@ struct TopicDetailView: View {
     /// de sıradakinin okunup okunmadığını buradan öğreniyor.
     @EnvironmentObject private var read: ReadTracker
 
+    /// Deste bitince listeye dönüyoruz.
+    @Environment(\.dismiss) private var dismiss
+
     /// Sayfalama gerektiren başlıkta son yüklenen sayfa; tek sayfalıkta nil.
     private var pager: TopicPage? {
         guard let last = pages.last, last.pageCount > 1 else { return nil }
@@ -61,88 +64,34 @@ struct TopicDetailView: View {
         siblings.firstIndex { $0.id == topic.id }
     }
 
-    private var previousSibling: Topic? {
-        guard let index = siblingIndex, index > 0 else { return nil }
-        return siblings[index - 1]
-    }
-
     private var nextSibling: Topic? {
         guard let index = siblingIndex, index + 1 < siblings.count else { return nil }
         return siblings[index + 1]
     }
 
-    /// Sayfalama barı yoksa ve komşular varsa alta debe gezinme barı geliyor.
-    private var showsSiblingBar: Bool {
-        pager == nil && siblingIndex != nil && siblings.count > 1
+    /// Debe destesi: ekran bir liste değil, kararı kaydırmayla verilen
+    /// kartlar. Gündemden ya da aramadan açılan başlıkta komşu olmadığı
+    /// için deste de yok.
+    private var isDeck: Bool {
+        siblingIndex != nil && siblings.count > 1
+    }
+
+    /// Destede kalan okunmamış entry.
+    private var remaining: Int {
+        read.unreadCount(in: siblings)
     }
 
     var body: some View {
         ScrollViewReader { proxy in
-            // LazyVStack değil List: LazyVStack yukarı kaydırırken görünmeyen
-            // satırları atıp geri gelince yeniden ölçüyor, uzun entry'lerde
-            // takılma buradan geliyordu. List hücreleri geri dönüştürüyor ve
-            // ölçtüğü yüksekliği saklıyor.
-            List {
-                switch phase {
-                case .loading where rows.isEmpty:
-                    // Gösterge listenin ilk satırında değil, ekranın
-                    // ortasında duruyor (aşağıdaki overlay).
-                    EmptyView()
-                case let .failed(failure) where rows.isEmpty:
-                    ErrorView(failure: failure) { await load() }
-                        .listRowSeparator(.hidden)
-                default:
-                    // Çapa için ayrı bir satır koymuyoruz: List sıfır
-                    // yükseklikli satıra da minimum yükseklik verip üstte
-                    // boşluk bırakıyor. Listenin ilk satırı neyse o çapa.
-                    if let more = pages.first?.previousMore {
-                        // Metin ve bağlantı Ekşi'den geliyor; sayıyı biz
-                        // hesaplamıyoruz, sayfa başına entry sabit değil.
-                        PreviousEntriesButton(
-                            label: more.label,
-                            loading: loadingPrevious,
-                            failure: previousFailure
-                        ) {
-                            await loadPrevious(more, anchoring: proxy)
-                        }
-                        .id(Self.topAnchor)
-                        .listRowSeparator(.hidden)
-                    }
-
-                    // Entry kutuları da başlık listesi gibi zebra: uzun
-                    // entry'lerde nerede bitip nerede başladığı ayrışıyor.
-                    ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
-                        EntryRow(
-                            rendered: row,
-                            fontSize: fontSize,
-                            openInApp: open(link:title:),
-                            openPopup: { popup = $0 },
-                            showFavorites: { favoritesOf = row.entry }
-                        )
-                        .id(row.id)
-                        .listRowBackground(Palette.row(isEven: index % 2 == 0))
-                        // Sınırı zebra çiziyor; ayraç çizgisi fazlalık.
-                        .listRowSeparator(.hidden)
-                    }
+            Group {
+                if isDeck {
+                    // Debe: liste değil, kararı kaydırmayla verilen deste.
+                    deck
+                } else {
+                    pagedList(proxy)
                 }
             }
-            .listStyle(.plain)
-            // Liste kendi zeminini çiziyor; palet zemini görünsün diye kapatıp
-            // altına kendi rengimizi koyuyoruz.
-            .scrollContentBackground(.hidden)
             .background(Palette.base)
-            // Debe'de yatay kaydırma komşu entry'ye geçiriyor; hareketin
-            // kendisi 3D: sayfa dönerek çıkıyor, gelecek entry kenardan
-            // görünüyor.
-            .siblingSwipe(
-                enabled: showsSiblingBar,
-                previous: previousSibling,
-                next: nextSibling,
-                position: siblingIndex.map { $0 + 1 },
-                total: siblings.count,
-                isRead: read.isRead(_:),
-                onSwitch: show(_:)
-            )
             .overlay {
                 if phase == .loading, rows.isEmpty {
                     BrandLoadingView()
@@ -164,23 +113,10 @@ struct TopicDetailView: View {
                     .padding(.vertical, 2)
                     // Zemin ana ekran çubuğunun altına kadar insin.
                     .background(.bar, ignoresSafeAreaEdges: .bottom)
-                } else if showsSiblingBar, let index = siblingIndex {
-                    // Kaydırmanın düğmeli karşılığı: hem keşfedilir oluyor
-                    // hem de kaçıncı entry'de olduğun görünüyor.
-                    SiblingBar(
-                        current: index + 1,
-                        total: siblings.count,
-                        previous: previousSibling,
-                        next: nextSibling,
-                        go: show(_:)
-                    )
-                    .padding(.horizontal)
-                    .padding(.vertical, 2)
-                    .background(.bar, ignoresSafeAreaEdges: .bottom)
                 }
             }
         }
-        .toolbar(pager == nil && !showsSiblingBar ? .visible : .hidden, for: .tabBar)
+        .toolbar(pager == nil ? .visible : .hidden, for: .tabBar)
         .navigationTitle(pages.first?.title ?? topic.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -237,12 +173,201 @@ struct TopicDetailView: View {
         }
         // id: topic.id — komşuya geçince yeniden koşuyor.
         .task(id: topic.id) {
-            // Ekrana gelen entry okundu sayılıyor: debe listesinde noktası
-            // sönüyor, üstteki sayaç düşüyor.
-            if !siblings.isEmpty { read.markRead(topic) }
+            // Okundu kaydı açılışta değil, kaydırma kararında düşüyor:
+            // sağa atılan entry okunmamış kalabilsin diye.
             guard pages.isEmpty else { return }
             await load()
         }
+    }
+
+    /// Debe destesi. Üstte kalan sayısı ve ilerleme, altında iki ayrı kart:
+    /// başlık ve entry. Karar kaydırmayla veriliyor, alt gezinme barı yok.
+    private var deck: some View {
+        VStack(spacing: 0) {
+            deckHeader
+
+            ScrollView {
+                VStack(spacing: 12) {
+                    titleCard
+
+                    if case let .failed(failure) = phase, rows.isEmpty {
+                        ErrorView(failure: failure) { await load() }
+                            .padding(16)
+                            .frame(maxWidth: .infinity)
+                            .cardSurface()
+                    }
+
+                    ForEach(rows) { row in
+                        EntryRow(
+                            rendered: row,
+                            fontSize: fontSize,
+                            openInApp: open(link:title:),
+                            openPopup: { popup = $0 },
+                            showFavorites: { favoritesOf = row.entry }
+                        )
+                        .padding(14)
+                        .cardSurface()
+                    }
+                }
+                .padding(.horizontal, 14)
+                .padding(.top, 10)
+                .padding(.bottom, 28)
+            }
+        }
+        .catchUpSwipe(
+            enabled: true,
+            next: nextSibling,
+            nextIsRead: nextSibling.map(read.isRead) ?? false,
+            onDecide: decide(read:)
+        )
+    }
+
+    /// Üst şerit: kaç entry kaldı, destede neredeyiz, hangi yön ne yapıyor.
+    private var deckHeader: some View {
+        VStack(spacing: 8) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("\(remaining) okunmamış")
+                    .font(.footnote.weight(.semibold))
+                    .monospacedDigit()
+                    .foregroundStyle(Palette.link)
+
+                Spacer(minLength: 0)
+
+                if let index = siblingIndex {
+                    Text("\(index + 1)/\(siblings.count)")
+                        .font(.footnote)
+                        .monospacedDigit()
+                        .foregroundStyle(Palette.meta)
+                }
+            }
+
+            // İnce ilerleme şeridi: destenin neresindeyiz.
+            GeometryReader { geo in
+                ZStack(alignment: .leading) {
+                    Capsule().fill(Palette.meta.opacity(0.25))
+                    Capsule()
+                        .fill(Palette.link)
+                        .frame(
+                            width: geo.size.width
+                                * CGFloat((siblingIndex ?? 0) + 1)
+                                / CGFloat(max(siblings.count, 1))
+                        )
+                }
+            }
+            .frame(height: 2)
+
+            // Hangi yön ne yapıyor: kaydırmayı denemeden önce yazıyor.
+            // Oklar yönü göstersin diye Label değil, elle diziliyor:
+            // solda ok önde, sağda ok arkada.
+            HStack(spacing: 4) {
+                Image(systemName: "arrow.left")
+                Text("okundu")
+                    .foregroundStyle(Palette.sage)
+
+                Spacer(minLength: 0)
+
+                Text("okunmadı")
+                    .foregroundStyle(Palette.link)
+                Image(systemName: "arrow.right")
+            }
+            .font(.caption2)
+            .foregroundStyle(Palette.meta)
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 8)
+        .padding(.bottom, 10)
+    }
+
+    /// Başlık kendi kartında: entry kartından ayrı dursun.
+    private var titleCard: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(pages.first?.title ?? topic.title)
+                .font(.title3.weight(.semibold))
+                .foregroundStyle(Palette.text)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if !topic.entryCount.isEmpty {
+                Text("\(topic.entryCount) entry")
+                    .font(.caption)
+                    .foregroundStyle(Palette.meta)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .cardSurface()
+    }
+
+    /// Kaydırmanın kararı: okundu ya da okunmadı, sonra sıradaki entry.
+    /// Deste bitmişse listeye dönüyoruz.
+    private func decide(read isRead: Bool) {
+        if isRead {
+            read.markRead(topic)
+        } else {
+            read.markUnread(topic)
+        }
+
+        if let next = nextSibling {
+            show(next)
+        } else {
+            dismiss()
+        }
+    }
+
+    /// Gündem ve arama: klasik sayfalı entry listesi.
+    ///
+    /// LazyVStack değil List: LazyVStack yukarı kaydırırken görünmeyen
+    /// satırları atıp geri gelince yeniden ölçüyor, uzun entry'lerde takılma
+    /// buradan geliyordu. List hücreleri geri dönüştürüyor ve ölçtüğü
+    /// yüksekliği saklıyor.
+    private func pagedList(_ proxy: ScrollViewProxy) -> some View {
+        List {
+            switch phase {
+            case .loading where rows.isEmpty:
+                // Gösterge listenin ilk satırında değil, ekranın
+                // ortasında duruyor (aşağıdaki overlay).
+                EmptyView()
+            case let .failed(failure) where rows.isEmpty:
+                ErrorView(failure: failure) { await load() }
+                    .listRowSeparator(.hidden)
+            default:
+                // Çapa için ayrı bir satır koymuyoruz: List sıfır
+                // yükseklikli satıra da minimum yükseklik verip üstte
+                // boşluk bırakıyor. Listenin ilk satırı neyse o çapa.
+                if let more = pages.first?.previousMore {
+                    // Metin ve bağlantı Ekşi'den geliyor; sayıyı biz
+                    // hesaplamıyoruz, sayfa başına entry sabit değil.
+                    PreviousEntriesButton(
+                        label: more.label,
+                        loading: loadingPrevious,
+                        failure: previousFailure
+                    ) {
+                        await loadPrevious(more, anchoring: proxy)
+                    }
+                    .id(Self.topAnchor)
+                    .listRowSeparator(.hidden)
+                }
+
+                // Entry kutuları da başlık listesi gibi zebra: uzun
+                // entry'lerde nerede bitip nerede başladığı ayrışıyor.
+                ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
+                    EntryRow(
+                        rendered: row,
+                        fontSize: fontSize,
+                        openInApp: open(link:title:),
+                        openPopup: { popup = $0 },
+                        showFavorites: { favoritesOf = row.entry }
+                    )
+                    .id(row.id)
+                    .listRowBackground(Palette.row(isEven: index % 2 == 0))
+                    // Sınırı zebra çiziyor; ayraç çizgisi fazlalık.
+                    .listRowSeparator(.hidden)
+                }
+            }
+        }
+        .listStyle(.plain)
+        // Liste kendi zeminini çiziyor; palet zemini görünsün diye kapatıp
+        // altına kendi rengimizi koyuyoruz.
+        .scrollContentBackground(.hidden)
     }
 
     /// Ekranı komşu entry'ye çeviriyor; yükleme `task(id:)` ile başlıyor.
@@ -365,42 +490,7 @@ private struct PreviousEntriesButton: View {
 }
 
 /// Debe gezinme barı: <  3/50  >. Kaydırmanın düğmeli karşılığı.
-private struct SiblingBar: View {
-    let current: Int
-    let total: Int
-    let previous: Topic?
-    let next: Topic?
-    let go: (Topic) -> Void
 
-    var body: some View {
-        HStack(spacing: 18) {
-            step("chevron.backward", to: previous)
-
-            Text("\(current)/\(total)")
-                .font(.footnote)
-                .monospacedDigit()
-                .foregroundStyle(Palette.sage)
-                .frame(minWidth: 44)
-
-            step("chevron.forward", to: next)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, 2)
-    }
-
-    private func step(_ symbol: String, to topic: Topic?) -> some View {
-        Button {
-            if let topic { go(topic) }
-        } label: {
-            Image(systemName: symbol)
-                .font(.footnote.weight(.semibold))
-                .frame(width: 30, height: 24)
-        }
-        .buttonStyle(.plain)
-        .foregroundStyle(Palette.sage.opacity(topic == nil ? 0.3 : 1))
-        .disabled(topic == nil)
-    }
-}
 
 /// Sayfalama: |<  <  1/3  >  >|
 private struct PagerBar: View {
