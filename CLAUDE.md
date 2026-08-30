@@ -50,6 +50,17 @@ Dikkat: `SessionBridge` Ekşi çerezlerinin hepsini App Group'a yazıyor, oturum
 çerezi de buna dahil. Aynı uygulamanın kutusu, ama widget'a giden veriyi
 genişletirken bunu hatırla.
 
+## Yan menü
+
+`DrawerContainer` sağdan açılıyor: üst bardaki ikon ya da **sağ kenardan
+içeri kaydırma**. Kaydırma parmağı takip ediyor, yolun %40'ı ya da hızlı
+fiske açıyor; altındaki eşikte menü yerine yaslanıyor.
+
+Açma yalnızca sağdaki **20 puntoluk şeritten** başlıyor ve hareket yatay
+olmak zorunda. İkisi de kasten: içerik `simultaneousGesture` ile hâlâ
+kendi kaydırmasını yapıyor ve debe destesindeki kart da aynı yönde
+kaydırılıyor (kart kenardan 14 punto içeride).
+
 ## Oylama
 
 Artı/eksi düğmeleri `EntryRow`'da, işi `VoteService` yapıyor. İstek

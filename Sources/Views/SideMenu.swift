@@ -1,8 +1,8 @@
 import SwiftUI
 import UIKit
 
-/// Sağdan açılan menü. Üst bardaki ikon açıyor, karartmaya dokunmak ya da
-/// sağa sürüklemek kapatıyor.
+/// Sağdan açılan menü. Üst bardaki ikon ya da sağ kenardan içeri kaydırma
+/// açıyor; karartmaya dokunmak ya da sağa sürüklemek kapatıyor.
 ///
 /// Sekme çubuğunun da üstünü kaplaması gerektiği için `RootView`'un en
 /// dışına, TabView'i sarmalayarak konuluyor.
@@ -10,42 +10,129 @@ struct DrawerContainer<Content: View>: View {
     @Binding var isOpen: Bool
     @ViewBuilder var content: () -> Content
 
+    /// Parmak menüyü sürüklerken kapalı/açık konuma eklenen kayma;
+    /// bırakılınca sıfırlanıyor, karar `isOpen`'a yazılıyor.
+    @State private var drag: CGFloat = 0
+
     /// Ekranın tamamını kaplamıyor: altındaki listeden bir şerit görünsün.
     private var width: CGFloat {
         min(310, UIScreen.main.bounds.width * 0.82)
     }
 
+    /// Menü kapalıyken durduğu yer.
+    private var hidden: CGFloat { width + 16 }
+
+    /// Kaydırmanın başlayabileceği sağ kenar şeridi.
+    ///
+    /// Dar tutuluyor: debe destesindeki kart da yatay kaydırılıyor ve o
+    /// kart kenardan 14 punto içeride duruyor.
+    private static var edge: CGFloat { 20 }
+
+    /// Menünün o anki yeri: kapalı/açık konum + parmağın götürdüğü kadar.
+    private var offset: CGFloat {
+        min(hidden, max(0, (isOpen ? 0 : hidden) + drag))
+    }
+
+    /// 0 tamamen kapalı, 1 tamamen açık. Karartma buna göre koyulaşıyor.
+    private var progress: CGFloat {
+        1 - offset / hidden
+    }
+
     var body: some View {
         ZStack(alignment: .topTrailing) {
             content()
+                // Sağ kenardan içeri kaydırma menüyü açıyor. Simultaneous:
+                // altındaki listenin kendi kaydırması çalışmaya devam etsin.
+                .simultaneousGesture(openDrag)
 
-            if isOpen {
-                Color.black.opacity(0.35)
+            if progress > 0.01 {
+                Color.black.opacity(0.35 * progress)
                     .ignoresSafeArea()
-                    .transition(.opacity)
                     .onTapGesture { close() }
+                    .gesture(closeDrag)
+                    // Sürüklerken içerik hâlâ parmağı görsün; karartma
+                    // ancak menü açıldıktan sonra dokunuş yutuyor.
+                    .allowsHitTesting(isOpen)
             }
 
             SideMenu(close: close)
                 .frame(width: width)
                 .frame(maxHeight: .infinity)
                 .background(Palette.surface.ignoresSafeArea())
-                .shadow(color: .black.opacity(isOpen ? 0.25 : 0), radius: 12, x: -4)
+                .shadow(color: .black.opacity(0.25 * progress), radius: 12, x: -4)
                 // Kapalıyken ekranın sağında bekliyor.
-                .offset(x: isOpen ? 0 : width + 16)
+                .offset(x: offset)
                 // Kapalıyken dokunuşları yutmasın.
                 .allowsHitTesting(isOpen)
-                .gesture(
-                    DragGesture(minimumDistance: 12)
-                        .onEnded { value in
-                            if value.translation.width > 60 { close() }
-                        }
-                )
+                .gesture(closeDrag)
+        }
+    }
+
+    /// Sağ kenardan sola: menüyü çekip çıkarıyor.
+    private var openDrag: some Gesture {
+        DragGesture(minimumDistance: 10, coordinateSpace: .global)
+            .onChanged { value in
+                guard canOpen(value) else { return }
+                // Sola gidiş negatif; menü o kadar içeri geliyor.
+                drag = min(0, value.translation.width)
+            }
+            .onEnded { value in
+                guard canOpen(value) else {
+                    drag = 0
+                    return
+                }
+                // Yarı yolu geçtiyse ya da hızlı fiskeyse açılıyor.
+                let flick = -value.predictedEndTranslation.width > 140
+                if -value.translation.width > width * 0.4 || flick {
+                    open()
+                } else {
+                    settle()
+                }
+            }
+    }
+
+    /// Menünün üstünde sağa: kapatıyor.
+    private var closeDrag: some Gesture {
+        DragGesture(minimumDistance: 12)
+            .onChanged { value in
+                guard isOpen else { return }
+                drag = max(0, value.translation.width)
+            }
+            .onEnded { value in
+                guard isOpen else { return }
+                if value.translation.width > 60 || value.predictedEndTranslation.width > 140 {
+                    close()
+                } else {
+                    settle()
+                }
+            }
+    }
+
+    /// Açma kaydırması yalnızca kapalıyken, sağ kenardan başlayan ve yatay
+    /// olan harekette geçerli: dikey kaydırmayı bozmasın.
+    private func canOpen(_ value: DragGesture.Value) -> Bool {
+        guard !isOpen else { return false }
+        guard value.startLocation.x > UIScreen.main.bounds.width - Self.edge else { return false }
+        return abs(value.translation.width) > abs(value.translation.height)
+    }
+
+    private func open() {
+        withAnimation(.easeOut(duration: 0.25)) {
+            drag = 0
+            isOpen = true
         }
     }
 
     private func close() {
-        withAnimation(.easeOut(duration: 0.25)) { isOpen = false }
+        withAnimation(.easeOut(duration: 0.25)) {
+            drag = 0
+            isOpen = false
+        }
+    }
+
+    /// Eşiğin altında bırakıldı: menü olduğu yere geri yaslanıyor.
+    private func settle() {
+        withAnimation(.easeOut(duration: 0.2)) { drag = 0 }
     }
 }
 
