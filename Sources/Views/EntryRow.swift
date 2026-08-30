@@ -43,12 +43,15 @@ struct EntryRow: View {
 
             // Tarih ve nick sıkışık duruyor: entry gövdesi ile alttaki
             // ikon sırası arasında ince bir şerit kalsın.
+            // Tarih meta gri, nick adaçayı: ikisi aynı renk olunca imza
+            // tek blok gibi okunuyordu.
             VStack(alignment: .trailing, spacing: 0) {
                 Text(entry.date)
+                    .foregroundStyle(Palette.meta)
                 Text(entry.author.nick)
+                    .foregroundStyle(Palette.nick)
             }
             .font(.caption2)
-            .foregroundStyle(Palette.sage)
             .multilineTextAlignment(.trailing)
 
             AvatarView(url: entry.author.avatarURL)
