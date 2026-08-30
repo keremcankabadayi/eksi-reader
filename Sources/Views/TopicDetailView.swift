@@ -46,6 +46,9 @@ struct TopicDetailView: View {
     /// zaten eski hâline dönüyor.
     @EnvironmentObject private var votes: VoteService
 
+    /// Favori hatası da aynı sebeple burada: damla zaten eski hâline dönüyor.
+    @EnvironmentObject private var favorites: FavoriteService
+
     /// Okundu kaydı: açılan debe entry'si işaretleniyor, kaydırma destesi
     /// de sıradakinin okunup okunmadığını buradan öğreniyor.
     @EnvironmentObject private var read: ReadTracker
@@ -171,6 +174,18 @@ struct TopicDetailView: View {
                 set: { if !$0 { votes.failure = nil } }
             ),
             presenting: votes.failure
+        ) { _ in
+            Button("tamam", role: .cancel) {}
+        } message: { detail in
+            Text(detail)
+        }
+        .alert(
+            "favorilenemedi",
+            isPresented: Binding(
+                get: { favorites.failure != nil },
+                set: { if !$0 { favorites.failure = nil } }
+            ),
+            presenting: favorites.failure
         ) { _ in
             Button("tamam", role: .cancel) {}
         } message: { detail in
@@ -572,5 +587,6 @@ private struct PagerBar: View {
     }
     .environmentObject(AuthSession.shared)
     .environmentObject(VoteService.shared)
+    .environmentObject(FavoriteService.shared)
     .environmentObject(ReadTracker.shared)
 }

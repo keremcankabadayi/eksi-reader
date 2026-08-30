@@ -95,6 +95,8 @@ struct EksiFeedProvider: FeedProviding {
         // Sayfa verilmiş oyları da taşıyor; ekrandaki geçici üstyazım artık
         // gereksiz.
         await VoteService.shared.adopt(parsed.entries)
+        // Favori durumu da sayfada yazıyor; aynı gerekçeyle üstyazım düşüyor.
+        await FavoriteService.shared.adopt(parsed.entries)
         guard !parsed.entries.isEmpty else {
             AppLog.warn("\(link): entry bulunamadı")
             throw EmptyParseError(page: fetched, what: "Entry")

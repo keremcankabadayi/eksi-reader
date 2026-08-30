@@ -14,6 +14,7 @@ struct EntryRow: View {
 
     @EnvironmentObject private var auth: AuthSession
     @EnvironmentObject private var votes: VoteService
+    @EnvironmentObject private var favorites: FavoriteService
 
     /// Çift dokunuşta oynayan damga; kendi kendine sönüyor.
     @State private var burst: VoteBurst?
@@ -76,18 +77,22 @@ struct EntryRow: View {
         HStack(spacing: 22) {
             Spacer(minLength: 0)
 
-            if entry.favoriteCount > 0 {
-                // Dokununca favorileyenler açılıyor, Ekşi'deki gibi.
-                Button(action: showFavorites) {
-                    // Label ikon ile sayı arasına geniş bir boşluk koyuyor;
-                    // ikiliyi kendimiz diziyoruz.
-                    HStack(spacing: 3) {
-                        EksiFlame()
-                            .frame(width: 11, height: 11)
-                        Text("\(entry.favoriteCount)")
+            // Ekşi'deki ayrımın aynısı: damlanın kendisi favoriye ekleyip
+            // çıkarıyor, yanındaki sayı favorileyenleri açıyor.
+            HStack(spacing: 4) {
+                favoriteButton
+
+                if favoriteState.count > 0 {
+                    Button(action: showFavorites) {
+                        Text("\(favoriteState.count)")
+                            .font(.caption)
+                            .foregroundStyle(Palette.meta)
+                            .monospacedDigit()
+                            // Sayı tek karakter olduğunda dokunulacak alan
+                            // fazla küçülüyor.
+                            .padding(.vertical, 4)
+                            .contentShape(Rectangle())
                     }
-                    .font(.caption)
-                    .foregroundStyle(Palette.meta)
                 }
             }
 
@@ -135,6 +140,45 @@ struct EntryRow: View {
         .font(.system(size: 15))
         .foregroundStyle(Palette.link)
         .buttonStyle(.plain)
+    }
+
+    private var favoriteState: FavoriteService.State {
+        favorites.state(for: entry)
+    }
+
+    /// Favori damlası: boşken favoride değil, doluyken favoride. Oy gibi
+    /// giriş istiyor, girişsizken sönük ve pasif.
+    private var favoriteButton: some View {
+        let state = favoriteState
+        let busy = favorites.isPending(entry.id)
+
+        return Button {
+            UIImpactFeedbackGenerator(style: state.isFavorite ? .rigid : .soft)
+                .impactOccurred()
+            Task { await favorites.toggle(entry: entry) }
+        } label: {
+            Group {
+                if state.isFavorite {
+                    EksiFlame()
+                } else {
+                    // Damla kapalı alan; boş hâli kendi konturuyla çiziliyor.
+                    EksiFlame()
+                        .stroke(style: StrokeStyle(lineWidth: 1.3, lineJoin: .round))
+                }
+            }
+            .frame(width: 13, height: 13)
+            .padding(.vertical, 4)
+            .contentShape(Rectangle())
+        }
+        .disabled(!auth.isLoggedIn || busy)
+        .foregroundStyle(favoriteTint(state.isFavorite, busy: busy))
+        .accessibilityLabel(state.isFavorite ? "favorilerden çıkar" : "favorilere ekle")
+    }
+
+    private func favoriteTint(_ isFavorite: Bool, busy: Bool) -> Color {
+        guard auth.isLoggedIn else { return Palette.link.opacity(0.3) }
+        if isFavorite { return Palette.brand }
+        return Palette.link.opacity(busy ? 0.4 : 1)
     }
 
     /// Aynı yöne ikinci kez basmak oyu geri alıyor; rengi `VoteService`

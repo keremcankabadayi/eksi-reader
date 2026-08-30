@@ -164,4 +164,26 @@ extension EntryPageParserTests {
         """
         XCTAssertEqual(try EntryPageParser.parse(html: html).entries.first?.vote, .down)
     }
+
+    /// Favori de oy gibi entry'nin özniteliğinde; girişsiz sayfada yok.
+    func testReadsFavoriteFlag() throws {
+        let html = """
+        <html><body>
+        <ul id="entry-item-list">
+          <li data-id="9" data-author="a" data-author-id="1" data-favorite-count="4"
+              data-isfavorite="true">
+            <div class="content">favorili</div>
+            <a class="entry-date permalink" href="/entry/9">02.01.2026 11:00</a>
+          </li>
+          <li data-id="10" data-author="b" data-author-id="2" data-favorite-count="0">
+            <div class="content">favorisiz</div>
+            <a class="entry-date permalink" href="/entry/10">02.01.2026 11:01</a>
+          </li>
+        </ul>
+        </body></html>
+        """
+        let entries = try EntryPageParser.parse(html: html).entries
+        XCTAssertTrue(entries[0].isFavorite)
+        XCTAssertFalse(entries[1].isFavorite)
+    }
 }

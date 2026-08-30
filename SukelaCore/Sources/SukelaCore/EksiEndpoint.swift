@@ -20,6 +20,10 @@ public enum EksiEndpoint: Hashable, Sendable {
     case removeVote
     /// Bir entry'yi favorileyen yazarların listesi. Parça HTML dönüyor.
     case favoriteAuthors(entryId: String)
+    /// Entry'yi favorilere ekleme. Gövde POST ile gidiyor, tek alan `entryId`.
+    case addFavorite
+    /// Favoriden çıkarma; gövdesi eklemeyle aynı.
+    case removeFavorite
 
     public static let baseURL = "https://eksisozluk.com"
 
@@ -37,6 +41,10 @@ public enum EksiEndpoint: Hashable, Sendable {
             return Self.make(path: "/entry/vote", query: [], page: nil)
         case .removeVote:
             return Self.make(path: "/entry/removevote", query: [], page: nil)
+        case .addFavorite:
+            return Self.make(path: "/entry/favla", query: [], page: nil)
+        case .removeFavorite:
+            return Self.make(path: "/entry/favlama", query: [], page: nil)
         case let .favoriteAuthors(entryId):
             return Self.make(
                 path: "/entry/favorileyenler",

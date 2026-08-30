@@ -99,4 +99,16 @@ final class EksiEndpointTests: XCTestCase {
             "https://eksisozluk.com/foo--1?p=3"
         )
     }
+
+    /// Favorileme uçları sitenin kendi JS'indeki adlarla.
+    func testFavoriteEndpoints() {
+        XCTAssertEqual(
+            EksiEndpoint.addFavorite.url?.absoluteString,
+            "https://eksisozluk.com/entry/favla"
+        )
+        XCTAssertEqual(
+            EksiEndpoint.removeFavorite.url?.absoluteString,
+            "https://eksisozluk.com/entry/favlama"
+        )
+    }
 }

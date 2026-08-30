@@ -43,6 +43,9 @@ public struct Entry: Identifiable, Hashable, Sendable {
     /// Bu kullanıcının entry'ye verdiği oy. Ekşi sayfada söylüyor
     /// (`data-isliked` / `data-isdisliked`), girişsizken hep nil.
     public let vote: VoteDirection?
+    /// Entry bu kullanıcının favorilerinde mi. Oy gibi sayfadan okunuyor
+    /// (`data-isfavorite`), girişsiz sayfada hep false.
+    public let isFavorite: Bool
 
     public init(
         id: String,
@@ -50,7 +53,8 @@ public struct Entry: Identifiable, Hashable, Sendable {
         author: Author,
         date: String,
         favoriteCount: Int,
-        vote: VoteDirection? = nil
+        vote: VoteDirection? = nil,
+        isFavorite: Bool = false
     ) {
         self.id = id
         self.contentHTML = contentHTML
@@ -58,6 +62,7 @@ public struct Entry: Identifiable, Hashable, Sendable {
         self.date = date
         self.favoriteCount = favoriteCount
         self.vote = vote
+        self.isFavorite = isFavorite
     }
 }
 

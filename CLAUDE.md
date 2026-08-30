@@ -91,18 +91,43 @@ Bu uçlar ve öznitelikler canlı siteden doğrulandı: sayfanın HTML'i
 web.archive.org'dan, oy mantığı `ekstat.com/js/ek$i-combo.js` içinden
 okundu (eksisozluk.com'un kendisi buradan 403 veriyor, ikisi vermiyor).
 
-## Favorileyenler
+## Favoriler
 
-Entry'nin altındaki kalp+sayı bir düğme: dokununca favorileyen yazarlar
-kartta açılıyor (`FavoriteListView`). Sayı sıfırken düğme hiç çizilmiyor.
+Entry'nin altında damla + sayı duruyor ve **ikisi ayrı düğme**, Ekşi'nin
+kendi ayrımının aynısı:
 
-Liste entry ile gelmiyor, ayrı adreste: `/entry/favorileyenler?entryId=…`
-parça HTML döndürüyor. `FavoriteListParser` sarmalayana bakmıyor, yazar
-bağlantılarını (`/biri/<nick>`) topluyor — işaretleme değişse de ayakta
-kalsın diye. Aynı parçadaki "çaylakları göster" bağlantısı yazar değil,
-listeye girmiyor.
+- **Damla** favoriye ekleyip çıkarıyor. Boş damla favoride değil, dolu
+  damla favoride (`EksiFlame`, dolu hâli marka yeşili; boş hâli aynı
+  şeklin `stroke`'u). Girişsizken sönük ve pasif, oy düğmeleri gibi.
+- **Sayı** favorileyen yazarları kartta açıyor (`FavoriteListView`).
+  Sayı sıfırken yalnızca damla çiziliyor.
 
-Favorileme (`/entry/favla`, `/entry/favlama`) henüz yok, yalnızca okuma var.
+Favorileme işini `FavoriteService` yapıyor, `VoteService` ile birebir
+aynı düzen:
+
+- **Favori durumu sayfadan okunuyor**, bizde tutulmuyor: Ekşi entry'nin
+  `<li>`'sine `data-isfavorite` yazıyor, `EntryPageParser` bunu
+  `Entry.isFavorite`'e çeviriyor.
+- `FavoriteService.overrides` yalnızca geçici üstyazım (favori durumu +
+  sayı): düğmeye basınca damla taze sayfayı beklemeden dolsun diye.
+  Sayfa yeniden çekilince `adopt(_:)` üstyazımı atıyor.
+- Uçlar `/entry/favla` (ekle) ve `/entry/favlama` (çıkar), gövde ikisinde
+  de tek alan: `entryId`.
+- Yanıt `{"Success":true,"Count":25}`; hata halinde `ErrorMessage` var.
+  Oy ucunun aksine sarmalayan yok, alanlar kökte. Oturum yoksa yine düz
+  `nologin` geliyor — `FavoriteParser` bunu ayrı hata sayıp
+  `AuthSession`'ı tazeliyor.
+- Sayıyı sunucu yanıtta söylüyor; iyimser +1/−1 yerine o geçerli oluyor.
+- Sunucu reddederse üstyazım düşüyor, başlık ekranında uyarı çıkıyor.
+
+Favorileyenler listesi entry ile gelmiyor, ayrı adreste:
+`/entry/favorileyenler?entryId=…` parça HTML döndürüyor.
+`FavoriteListParser` sarmalayana bakmıyor, yazar bağlantılarını
+(`/biri/<nick>`) topluyor — işaretleme değişse de ayakta kalsın diye.
+Aynı parçadaki "çaylakları göster" bağlantısı yazar değil, listeye
+girmiyor.
+
+Uçlar ve gövde `ekstat.com/js/ek$i-combo.js` içinden doğrulandı.
 
 ## Debe destesi ve okundu takibi
 

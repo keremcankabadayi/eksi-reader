@@ -126,7 +126,9 @@ public enum EntryPageParser {
                     author: Author(id: authorId, nick: authorNick, avatarURL: avatarURL),
                     date: date,
                     favoriteCount: favoriteCount,
-                    vote: parseVote(in: item)
+                    vote: parseVote(in: item),
+                    // Favori de oy gibi entry'nin özniteliğinde duruyor.
+                    isFavorite: isTrue(item, "data-isfavorite")
                 )
             )
         }

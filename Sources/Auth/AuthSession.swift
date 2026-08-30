@@ -103,8 +103,9 @@ final class AuthSession: ObservableObject {
         isLoggedIn = false
         nick = nil
         persist()
-        // Oy tablosu bu kullanıcıya aitti.
+        // Oy ve favori tabloları bu kullanıcıya aitti.
         VoteService.shared.clear()
+        FavoriteService.shared.clear()
     }
 
     private func persist() {
